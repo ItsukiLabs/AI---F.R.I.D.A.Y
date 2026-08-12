@@ -96,3 +96,77 @@
   - Memory eksternal (`friday_progress_tracking.md` di sistem memori Claude, bukan bagian dari repo ini) — diupdate supaya aturan ini terbawa otomatis ke sesi-sesi berikutnya, tidak perlu user ulang instruksi ini lagi.
 - **Alasan/keputusan:** Tujuannya dua arah — (1) jadi data rujukan/"training" buat asisten supaya nggak salah asumsi soal apa yang sudah dibahas, (2) jadi pengingat buat user sendiri biar nggak lupa progres/keputusan yang sudah diambil.
 - **Belum dikerjakan / TODO lanjutan:** Tidak ada perubahan teknis — murni penegasan konvensi kerja. TODO teknis sebelumnya (`.env`, commit git M0, mulai coding M1) masih berlaku.
+
+## [2026-08-07] Commit pertama M0 Contract Layer
+
+- **Apa yang dikerjakan:** Semua hasil kerja M0 (schema, test, catatan modul, update log) di-stage dan di-commit ke git lokal dengan pesan `feat(m0): add ToolContract schema for tool manifest`.
+- **File yang dibuat/diubah:** 10 file masuk commit `46c7be7` — `backend/__init__.py`, `backend/schemas/__init__.py`, `backend/schemas/tool_contract.py`, `backend/schemas/versioning.py`, `backend/tests/__init__.py`, `backend/tests/test_tool_contract.py`, `Memory Think/M0_contract_layer.md`, `Memory Think/M1_agent_core.md`, `Memory Think/SPRINT1_LOG.md`, `requirements.txt`. File `backend/schemas/.gitkeep` terhapus (tergantikan isi asli).
+- **Alasan/keputusan:** Commit dipisah per unit kerja logis (M0 selesai = satu commit), bukan digabung sekaligus sama commit besar berikutnya — supaya riwayat git gampang ditelusuri per modul.
+- **Belum dikerjakan / TODO lanjutan:**
+  - Commit ini **belum di-push** ke `origin/master` — masih 1 commit ahead secara lokal, menunggu instruksi push.
+  - `.env`/`.env.example` untuk API key LLM masih belum ada.
+  - M1 (agent loop ReAct) belum mulai coding.
+
+## [2026-08-07] Push commit M0 + diskusi biaya LLM & keputusan cloud-dulu-lokal-nanti
+
+- **Apa yang dikerjakan:**
+  1. Push commit `46c7be7` ke `origin/master` (`ea92316..46c7be7`).
+  2. User tanya: kalau pakai Anthropic/OpenAI apakah F.R.I.D.A.Y jadi berbayar, sementara dia mau F.R.I.D.A.Y bebas biaya/kontrol pihak luar dan cuma patuh ke dia + orang yang dia setujui, "tanpa batasan". Dijelaskan: (a) cloud API memang bayar per-token/usage, bukan gratis untuk pemakaian serius; (b) "bebas biaya & kontrol penuh" = soal *LLM engine*, sudah match sama rencana Sprint 8 (M12 Local Inference + M13 Hybrid Routing) — pakai model open-weight lokal (Llama/Mistral/Qwen/DeepSeek via llama.cpp/Ollama); (c) "cuma patuh ke aku & yang aku setujui" = soal **M11 Security/Permission**, independen dari LLM mana yang dipakai; (d) diklarifikasi ulang maksud "tanpa batasan" karena ambigu — bisa berarti bebas biaya/kontrol korporat (dicapai via model lokal) atau berarti model tanpa batasan konten/perilaku sama sekali (ditolak dibantu kalau maksudnya itu). User konfirmasi maksudnya opsi (a) — bebas biaya/kontrol korporat.
+  3. Keputusan arsitektur M1: **mulai pakai cloud API dulu untuk Sprint 1 (prototyping cepat, kualitas tool-calling lebih reliable)**, tapi M1 didesain provider-agnostic supaya gampang di-swap ke local model pas Sprint 8 sesuai rencana awal — bukan langsung lompat ke local sekarang karena setup hosting+quantization akan menunda validasi logic loop ReAct itu sendiri.
+  4. User pilih provider: **siapkan dua-duanya** (Anthropic Claude + OpenAI) di `.env.example`, walau default provider M1 nanti cuma satu (`anthropic`).
+- **File yang dibuat/diubah:**
+  - `.env.example` — baru, template variabel: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `LLM_PROVIDER` (default `anthropic`).
+  - `.env` — baru, isi sama seperti template tapi key masih kosong (user perlu isi manual API key asli-nya sendiri). **Tidak masuk git** (sudah di-`.gitignore`, dicek `git status` cuma `.env.example` yang muncul).
+- **Alasan/keputusan:**
+  - `.env.example` sengaja dikecualikan dari `.gitignore` (pola `.env.*` + `!.env.example`) supaya template variabel ikut ke-commit tapi secret asli tidak pernah ke-push.
+  - Nama variabel `LLM_PROVIDER` ditambahin (bukan cuma dua API key) supaya M1 nanti bisa baca satu switch simpel buat nentuin provider default, tanpa hardcode di kode.
+- **Belum dikerjakan / TODO lanjutan:**
+  - User perlu isi `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` asli di `.env` miliknya sendiri (bukan sesuatu yang saya isi/lihat).
+  - `python-dotenv` (atau setara) belum ditambahkan ke `requirements.txt` — akan ditambah pas mulai coding M1 yang benar-benar konsumsi `.env` ini.
+  - M1 (agent loop ReAct) belum mulai coding — sekarang jadi next step utama.
+
+## [2026-08-12] Rombak struktur folder paper jadi per-modul (M0–M17)
+
+- **Apa yang dikerjakan:**
+  1. User mau kasih paper pengganti untuk 2 file bermasalah (M17: paper mismatch soal Context-Awareness; M11: 4 paper jailbreak/sandbox-escape yang sebelumnya DILEWATI). Awalnya disarankan taruh di folder lama (`Interaksi Manusia-Komputer.../` dan `2/`), tapi user minta sekalian folder papernya dirombak total jadi satu folder per modul (`M0/` s.d. `M17/`) biar lebih gampang dipahami paper mana untuk modul mana.
+  2. Diklarifikasi dulu: banyak paper relevan ke >1 modul (MCP, Agent-OS, HearthNet, OSWorld 2.0, dll.) — user pilih opsi **satu folder modul utama per paper** (bukan folder "Lintas-Modul" terpisah, bukan juga digandakan fisik ke tiap folder relevan). Relevansi ke modul lain tetap dicatat sebagai teks di `PAPER_NOTES.md`, bukan lewat lokasi file.
+  3. Enumerasi seluruh 96 file PDF nyata di folder lama (`1/`-`5/` + 3 folder tematik + 2 file di root), dipetakan satu-per-satu ke modul utamanya berdasarkan `sprint-paper-mapping.md` (kategori→modul) + isi entry masing-masing di `PAPER_NOTES.md`.
+  4. Eksekusi lewat script (`mkdir` + `mv` per file, dijalankan dari Bash) — dipilih pendekatan script/mapping-list dibanding mv manual satu-satu karena skalanya besar (96 file, banyak nama file berkarakter spesial: apostrof, en-dash, titik dua, tanda kurung).
+  5. Folder lama yang sudah kosong (`2/`, `3/`, `4/`, `5/`, `Implementasi Teknis & Pemrosesan Bahasa Alami/`) dihapus. Folder `1/` dan 2 folder tematik lain **tidak dihapus** karena masih menyisakan file yang belum bisa dikategorikan (3 file mismatch tanpa kategori jelas + 1 file `Nggak dulu` non-paper yang memang sudah dikecualikan sejak awal).
+  6. `PAPER_NOTES.md` diupdate otomatis via script Python (replace literal path lama→baru) untuk 90 dari 93 referensi path di badan dokumen, plus tabel "File Bermasalah" diedit manual (formatnya kolom terpisah, tidak kena replace otomatis) supaya kolom Folder-nya juga mengikuti skema baru. Ditambah catatan penjelasan skema baru di bagian atas dokumen.
+- **File yang dibuat/diubah:**
+  - `Paper & Journal/F.R.I.D.A.Y/M0/` s.d. `M17/` — baru, isi total 93 PDF (lihat rincian di bawah).
+  - `Paper & Journal/F.R.I.D.A.Y/2/`, `3/`, `4/`, `5/`, `Implementasi Teknis & Pemrosesan Bahasa Alami/` — dihapus (sudah kosong).
+  - `Memory Think/PAPER_NOTES.md` — seluruh field `Lokasi file` diupdate ke path baru, tabel "File Bermasalah" diupdate (kolom Folder + catatan lokasi khusus untuk 2 paper pengganti M17/M15), ditambah catatan skema folder baru di bagian atas dokumen.
+  - `Memory Think/SPRINT1_LOG.md` — entry ini.
+- **Alasan/keputusan:**
+  - Mapping "1 paper = 1 folder modul utama" dipilih user supaya tidak ada duplikat file besar (PDF) dan tidak ada folder "Lintas-Modul" yang jadi kategori aneh sendiri di luar skema M0-M17 — trade off-nya: kalau mau tahu paper itu relevan ke modul lain juga, harus buka `PAPER_NOTES.md`, bukan cukup lihat lokasi filenya.
+  - 3 file mismatch yang isinya sama sekali belum jelas kategori aslinya (Recent Advances in Conversational AI, Voice Assistants in Everyday Life, Building Trust in Human-AI Collaboration) **sengaja tidak dipaksa masuk folder M manapun** — dibiarkan di folder tematik lama sampai paper aslinya ditemukan, supaya tidak salah taruh modul lalu harus dipindah lagi nanti.
+  - **Lokasi paper pengganti (update dari jawaban sebelumnya di sesi ini):** karena foldernya sudah dirombak, paper pengganti untuk M17 (Context-Awareness) taruh langsung di `M17/`, dan untuk M11 (4 paper jailbreak/sandbox-escape) taruh langsung di `M11/` — bukan lagi di folder tematik/`2/` seperti disebut sebelumnya di percakapan ini, karena folder itu sudah tidak ada.
+- **Belum dikerjakan / TODO lanjutan:**
+  - User perlu cari ulang 3 paper mismatch yang belum ketahuan modulnya (lihat tabel File Bermasalah di `PAPER_NOTES.md`) sebelum bisa dipindah ke folder M yang tepat.
+  - Paper pengganti M17 & M11 yang dijanjikan user belum ditaruh — begitu ditaruh di `M17/`/`M11/`, saya perlu baca dan update status entry terkait di `PAPER_NOTES.md` (dari MISMATCH/DILEWATI ke Teks penuh/Ekstraksi parsial).
+  - M1 (agent loop ReAct) masih belum mulai coding — tetap next step utama untuk kode (independen dari beres-beres paper ini).
+
+## [2026-08-12] Audit & update PAPER_NOTES.md — 9 paper baru M11/M17 dibaca, ketemu `pdftotext` tersedia
+
+- **Apa yang dikerjakan:**
+  1. User diam-diam sudah taruh paper baru di `M11/` dan `M17/` (menjawab TODO sesi sebelumnya), lalu minta saya cek & update `PAPER_NOTES.md`, sampaikan kalau ada yang kurang/kurang cocok/perlu sesuatu.
+  2. Audit terstruktur (script Python): bandingkan isi fisik tiap folder `M0`-`M17` vs semua path yang direferensikan di `PAPER_NOTES.md`, supaya nemu file yang belum tercatat tanpa perlu baca ulang seluruh dokumen. Ketemu 9 file baru asli (bukan false-positive dari keterbatasan regex terhadap format tabel 2-kolom): 5 di `M11/` (termasuk 1 salinan tambahan paper "Not What You've Signed Up For" yang sudah ada), 4 di `M17/`.
+  3. Coba baca 9 PDF baru pakai Read tool → gagal (`pdftoppm`/poppler tidak terpasang). Dicoba fallback: ternyata **`pdftotext` (poppler CLI, versi lain) tersedia** di environment ini — sebelumnya di sesi 2026-08-06 disimpulkan "tool render PDF tidak tersedia" untuk banyak paper, ternyata itu spesifik ke `pdftoppm`/Read-tool, bukan ke poppler secara keseluruhan.
+  4. Ekstrak & baca abstract+intro (kadang lebih) dari 9 paper baru pakai `pdftotext`, tulis entry baru di `PAPER_NOTES.md` kategori #6 (4 entry: LASM survey, AgentDojo, InjecAgent, Toward Secure LLM Agents) dan kategori #14 (3 entry: Personalization Survey, ContextAgent, Enabling Personalized Long-term Interactions, Proactive Agent — total 4, salah satu penomoran di atas keliru, lihat file untuk hitungan pasti 4 entry M17).
+  5. Sekalian coba `pdftotext` ke paper LAMA yang berstatus "Gagal dibaca" (Proactive Conversational Agents with Inner Thoughts, 22MB) — berhasil, jadi diupgrade dari "Gagal dibaca" ke entry lengkap terverifikasi.
+  6. Update tabel "File Bermasalah" dan catatan kategori #14 di `PAPER_NOTES.md` supaya tidak lagi menganggap kategori itu "kekurangan 1 paper" — sudah diperkuat signifikan meski file mismatch aslinya belum diganti.
+  7. Ketemu bagian **basi** di `sprint-paper-mapping.md` — tabel "Kategori yang BELUM Punya Paper" (ditulis 2025-07-14) menyebut 6 kategori (#6-#12) masih butuh paper, padahal per audit hari ini semua sudah terisi (paper-nya sudah diriset sejak sesi 2026-08-06, tabel itu memang tidak pernah diupdate). Diperbaiki jadi tabel status "sudah terisi" + daftar TODO yang genuinely masih terbuka (4 DILEWATI, 3 mismatch tanpa kategori, 1 mismatch M15).
+- **File yang dibuat/diubah:**
+  - `Memory Think/PAPER_NOTES.md` — 8 entry baru (4 di kategori #6, 4 di kategori #14), 1 entry lama di-upgrade penuh (Inner Thoughts), 1 entry lama ditambah catatan salinan ke-3 (Not What You've Signed Up For), tabel File Bermasalah + catatan kategori #14 diupdate, ringkasan total di akhir dokumen diupdate.
+  - `Memory Think/sprint-paper-mapping.md` — tabel "Kategori yang BELUM Punya Paper" diperbarui dari basi jadi cerminan status nyata.
+  - `Memory Think/SPRINT1_LOG.md` — entry ini.
+- **Alasan/keputusan:**
+  - Tidak baca ulang seluruh 96 PDF lama dari nol untuk audit ini — scope dibatasi ke: (a) file yang genuinely baru (ketahuan lewat diff disk-vs-notes, bukan tebakan), (b) 1 paper lama yang statusnya "gagal total" dan sekarang bisa diperbaiki dengan tool yang baru ketahuan tersedia. Membaca ulang semua paper lama di luar scope permintaan user turn ini.
+  - Ekstraksi pakai `pdftotext` (bukan Read tool) dicatat jujur di field "Sumber informasi" sebagai "Ekstraksi mendalam" (bukan "Teks penuh") karena yang dibaca baru abstract+intro (kadang metodologi), bukan keseluruhan paper — konsisten sama konvensi sourcing-transparency yang sudah ada dari sesi awal.
+- **Belum dikerjakan / TODO lanjutan:**
+  - **Temuan penting untuk disampaikan ke user:** ada 14 entry lama (kategori #7-#12 terutama) berstatus "Pengetahuan umum" (ekstraksi gagal saat sesi 2026-08-06) yang sekarang berpotensi bisa diupgrade pakai `pdftotext` yang baru ketahuan tersedia — belum dikerjakan karena di luar scope eksplisit turn ini, tapi worth dikerjakan kalau user mau tingkat kepercayaan catatan lebih tinggi.
+  - 4 paper DILEWATI di M11 (jailbreak/sandbox-escape) masih belum dicoba dibaca ulang pakai `pdftotext` — kemungkinan bisa berhasil sekarang (masalah sebelumnya mungkin di tool render, bukan konten), tapi belum dicoba karena user belum minta secara eksplisit dan kontennya sensitif (teknik serangan).
+  - 3 file mismatch tanpa kategori jelas + 1 file mismatch M15 masih menunggu paper pengganti dari user.
+  - M1 (agent loop ReAct) masih belum mulai coding.

@@ -245,23 +245,24 @@ Tiga paper ini dirujuk di banyak modul. Selalu simpan di Project Knowledge:
 
 ---
 
-## Kategori yang BELUM Punya Paper
+## Kategori yang BELUM Punya Paper — [STATUS: SUDAH TERISI SEMUA, per 2026-08-12]
 
-Ini yang perlu kamu cari:
+> Tabel di bawah ini ditulis 2025-07-14, **sebelum** sesi riset paper besar-besaran 2026-08-06 (lihat `PAPER_NOTES.md`). Per audit 2026-08-12, **semua 6 kategori di tabel ini sudah punya paper** (bahkan lebih dari cukup) — tabel dipertahankan di bawah cuma sebagai riwayat, bukan TODO aktif lagi. Detail lengkap tiap paper ada di `PAPER_NOTES.md` per kategori.
 
-| Kategori | Nama | Butuh | Untuk Sprint |
-|---|---|---|---|
-| **#6** | Security & Permission | 2 paper | 4 ⚠️ |
-| **#7** | Wake Word | 1 paper *(atau skip → docs)* | 5 |
-| **#8** | Real-Time Speech | 2 paper | 5 |
-| **#9** | Speaker Auth | 1 paper | 5 |
-| **#10** | Expressive TTS | 1 paper *(atau skip → docs)* | 5 |
-| **#11** | Local Inference | 1 paper | 8 |
-| **#12** | Cloud-Edge Routing | 1 paper *(1 sudah ada)* | 8 |
+| Kategori | Nama | Status per 2026-08-12 |
+|---|---|---|
+| **#6** | Security & Permission | ✅ Terisi — 14 paper terbaca (5 di antaranya baru ditambah 2026-08-12) + 4 paper *dilewati* (DILEWATI, masih perlu ditinjau manual, lihat File Bermasalah di `PAPER_NOTES.md`) |
+| **#7** | Wake Word | ✅ Terisi — 8 paper |
+| **#8** | Real-Time Speech | ✅ Terisi — 7 paper |
+| **#9** | Speaker Auth | ✅ Terisi — 7 paper |
+| **#10** | Expressive TTS | ✅ Terisi — 6 paper |
+| **#11** | Local Inference | ✅ Terisi — 6 paper |
+| **#12** | Cloud-Edge Routing | ✅ Terisi — 6 paper |
 
-**Total yang masih perlu dicari: ~7–9 paper.**
-
-**Prioritas cari duluan:** Kategori **#6** (Security) — karena Sprint 4 tidak boleh dilewati dan itu yang menjaga hardware-mu aman.
+**Yang MASIH genuinely butuh tindakan (bukan dari tabel ini, tapi dari audit terpisah):**
+- 4 paper **DILEWATI** di kategori #6 (jailbreak/sandbox-escape) — belum pernah dibaca sama sekali karena memicu safety-filter otomatis berulang saat proses awal. Baca manual kalau perlu isinya (lihat tabel File Bermasalah di `PAPER_NOTES.md`).
+- 3 file **mismatch tanpa kategori jelas** (Recent Advances in Conversational AI, Voice Assistants in Everyday Life, Building Trust in Human-AI Collaboration) — isi filenya salah total, paper aslinya belum ketahuan sama sekali.
+- 1 file **mismatch kategori #15** (Form Follows Function) — masih perlu paper pengganti, belum ditaruh user.
 
 ---
 
