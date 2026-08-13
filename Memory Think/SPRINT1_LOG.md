@@ -165,8 +165,51 @@
 - **Alasan/keputusan:**
   - Tidak baca ulang seluruh 96 PDF lama dari nol untuk audit ini — scope dibatasi ke: (a) file yang genuinely baru (ketahuan lewat diff disk-vs-notes, bukan tebakan), (b) 1 paper lama yang statusnya "gagal total" dan sekarang bisa diperbaiki dengan tool yang baru ketahuan tersedia. Membaca ulang semua paper lama di luar scope permintaan user turn ini.
   - Ekstraksi pakai `pdftotext` (bukan Read tool) dicatat jujur di field "Sumber informasi" sebagai "Ekstraksi mendalam" (bukan "Teks penuh") karena yang dibaca baru abstract+intro (kadang metodologi), bukan keseluruhan paper — konsisten sama konvensi sourcing-transparency yang sudah ada dari sesi awal.
-- **Belum dikerjakan / TODO lanjutan:**
-  - **Temuan penting untuk disampaikan ke user:** ada 14 entry lama (kategori #7-#12 terutama) berstatus "Pengetahuan umum" (ekstraksi gagal saat sesi 2026-08-06) yang sekarang berpotensi bisa diupgrade pakai `pdftotext` yang baru ketahuan tersedia — belum dikerjakan karena di luar scope eksplisit turn ini, tapi worth dikerjakan kalau user mau tingkat kepercayaan catatan lebih tinggi.
-  - 4 paper DILEWATI di M11 (jailbreak/sandbox-escape) masih belum dicoba dibaca ulang pakai `pdftotext` — kemungkinan bisa berhasil sekarang (masalah sebelumnya mungkin di tool render, bukan konten), tapi belum dicoba karena user belum minta secara eksplisit dan kontennya sensitif (teknik serangan).
+- **Belum dikerjakan / TODO lanjutan (saat itu):**
+  - 14 entry "Pengetahuan umum" berpotensi diupgrade pakai `pdftotext`.
+  - 4 paper DILEWATI di M11 belum dicoba dibaca ulang.
   - 3 file mismatch tanpa kategori jelas + 1 file mismatch M15 masih menunggu paper pengganti dari user.
   - M1 (agent loop ReAct) masih belum mulai coding.
+
+## [2026-08-12] Eksekusi 2 rekomendasi: upgrade 12 entry "Pengetahuan umum" + baca 4 paper DILEWATI
+
+- **Apa yang dikerjakan:** User menyetujui dua rekomendasi dari entry sebelumnya, dikerjakan berurutan dalam satu turn.
+  1. **Upgrade status sumber 12 entry lama** (kategori #7-#10 + 1 di #14): diekstrak via `pdftotext`, dibaca abstract/intro/related-work, entry ditulis ulang dengan detail teknis akurat (penulis, metode, angka hasil) dan status "Sumber informasi" naik dari "Pengetahuan umum" ke "Ekstraksi mendalam". 11 dari 12 berhasil diupgrade penuh. 1 (AutoAgents) dikonfirmasi ulang tetap mismatch — filenya memang salah unduh (isi paper fisika kuantum "Quantum Codes from Twisted Unitary t-groups"), bukan masalah tool, jadi tetap "Pengetahuan umum".
+  2. **Ditemukan 2 koreksi faktual** saat proses upgrade (bukan cuma nambah detail, tapi membetulkan kesalahan lama): (a) entry "ASVspoof (2017)" — deskripsi lama soal "replay attack, corpus RedDots" ternyata salah paper; file fisiknya adalah laporan ASVspoof **2015** (fokus TTS/voice-conversion spoofing, bukan replay) — deskripsi lama itu sebenarnya menggambarkan edisi ASVspoof 2017 yang berbeda. (b) entry "Building Accurate Low Latency ASR" — dugaan lama "two-pass decoding" ternyata bukan itu; paper aslinya pakai hierarchical CTC + joint end-of-speech detection.
+  3. **Baca 4 paper DILEWATI di M11** (jailbreak code agent, MCP protocol security, sandbox escape, safety alignment) — semua berhasil diekstrak & dibaca via `pdftotext` tanpa hambatan sama sekali, mengonfirmasi dugaan bahwa masalah DILEWATI dulu adalah tool render PDF (`pdftoppm`/Read tool), bukan filter konten. Dibaca dengan fokus ke metodologi/temuan agregat (kerangka evaluasi & pertahanan), bukan detail teknik eksploitasi/payload — sesuai prinsip riset keamanan defensif. Salah satunya ("Breaking the Protocol... MCP") ditandai KRITIS karena analisis formal pertama terhadap spesifikasi MCP itu sendiri, langsung relevan ke keputusan M0 pakai MCP sebagai format kontrak.
+  4. Update pendukung: tabel "File Bermasalah" (4 baris DILEWATI dihapus, sudah tidak relevan), ringkasan total paper di akhir dokumen, dan tabel status di `sprint-paper-mapping.md`.
+- **File yang dibuat/diubah:**
+  - `Memory Think/PAPER_NOTES.md` — 12 entry lama diupgrade/dikoreksi, 4 entry baru menggantikan bagian "Paper yang DILEWATI", tabel File Bermasalah + ringkasan akhir diupdate.
+  - `Memory Think/sprint-paper-mapping.md` — tabel status kategori #6 & daftar TODO diupdate (4 DILEWATI dicoret, selesai).
+  - `Memory Think/SPRINT1_LOG.md` — entry ini.
+- **Alasan/keputusan:**
+  - Koreksi ASVspoof & Building Accurate Low Latency ASR sengaja ditulis eksplisit sebagai "koreksi" (bukan diam-diam diganti) — supaya kalau ada keputusan kode yang sudah sempat dibuat berdasarkan catatan lama yang salah, ketahuan perlu ditinjau ulang.
+  - 4 paper DILEWATI dibaca dengan sengaja membatasi diri ke metodologi/temuan, bukan meniru/mengutip detail teknik serangan — konsisten dengan prinsip dual-use security research (pelajari untuk bertahan, bukan untuk menyerang).
+- **Belum dikerjakan / TODO lanjutan:**
+  - 3 file mismatch tanpa kategori jelas + 1 file mismatch M15 masih menunggu paper pengganti dari user.
+  - Status sumber di `PAPER_NOTES.md` sekarang: 106/109 entry punya sumber terverifikasi (Teks penuh/Ekstraksi mendalam/Ekstraksi parsial), cuma AutoAgents yang masih "Pengetahuan umum" (genuinely tidak bisa diperbaiki tanpa file baru).
+  - M1 (agent loop ReAct) masih belum mulai coding — tetap next step utama.
+
+## [2026-08-13] Verifikasi & perbaikan file paper pengganti (M7/M14/M15/M17) — 3 berhasil, 1 ternyata duplikat bukan paper baru
+
+- **Apa yang dikerjakan:**
+  1. User menambahkan beberapa file paper baru ke folder `M7/`, `M14/`, `M17/` sebagai kandidat pengganti file mismatch yang tercatat di TODO sesi sebelumnya. Saya diminta cek apakah file-file itu valid.
+  2. Verifikasi satu-per-satu pakai `pdftotext` (bukan cuma cek nama file): **M14 (AutoAgents)** dan **M17 (Context-Awareness)** — isi cocok dengan judul, berhasil. **"Form Follows Function"** — isinya benar (paper anthropomorphism LLM asli), tapi ditemukan **salah taruh folder**: user taruh di `M17/`, padahal isinya untuk `M15/` (Persona). **M7 (Depthwise CNN 2022)** — file yang ditambahkan ternyata **duplikat 100% dari paper 2020 yang sudah ada** (dikonfirmasi via `diff` full-text, hasilnya kosong sama sekali, plus MD5 hash identik) — bukan paper baru yang beda.
+  3. User sendiri sempat menelusuri ulang mencari paper "Depthwise CNN 2022" yang genuinely berbeda dan tidak menemukan — mengonfirmasi kesimpulan bahwa file itu memang tidak ada sebagai paper terpisah, "2022" di nama file lama cuma penamaan keliru.
+  4. User setuju eksekusi rencana: pindah "Form Follows Function" ke folder yang benar, hapus file-file lama yang sudah tergantikan, hapus duplikat M7 yang salah nama.
+  5. Eksekusi file: hapus `M7/A Depthwise Separable CNN for Keyword Spotting on an Embedded System (2022).pdf` (mismatch asli, isi Sub-mW) — sempat juga hapus 1 file duplikat tambahan (`A Depthwise Separable CNN for Keyword Spotting (2022).pdf`, tanpa "on an Embedded System") yang sempat "hilang lalu muncul lagi" di listing folder (kemungkinan delay sinkronisasi OneDrive, bukan tindakan saya) — dicek ulang hash-nya tetap identik ke paper 2020, aman dihapus. Hapus `M14/AutoAgents...(2024).pdf` (mismatch lama, fisika kuantum) dan `M17/Context-Awareness...and Large Language Models.pdf` (mismatch lama, kriptografi medis). Pindahkan `Form Follows Function...pdf` dari `M17/` ke `M15/`.
+  6. Update `PAPER_NOTES.md`: tulis ulang entry AutoAgents (M14), tambah entry baru untuk Context-Awareness survey (M17, arXiv:2402.01968) dan Humanizing Machines (M15, arXiv:2508.17573), update catatan Sub-mW (M7) menghapus referensi ke file yang sudah dihapus, bersihkan 4 baris tabel "File Bermasalah" yang sudah resolved + 1 baris "Inner Thoughts — Gagal dibaca" yang sudah basi (sudah terverifikasi sejak 2026-08-12 tapi tabel tidak sempat disinkron saat itu), update ringkasan total paper.
+  7. Update `sprint-paper-mapping.md`: tandai selesai untuk mismatch M14/M15/M17 di catatan TODO kategori.
+- **File yang dibuat/diubah:**
+  - `Paper & Journal/F.R.I.D.A.Y/M7/`, `M14/`, `M17/`, `M15/` — operasi hapus/pindah file seperti dijelaskan di atas.
+  - `Memory Think/PAPER_NOTES.md` — 3 entry ditulis ulang/baru (AutoAgents, Context-Awareness survey, Humanizing Machines), 1 entry diperbarui (Sub-mW), tabel File Bermasalah dikurangi dari 10 baris jadi 5 baris, ringkasan total diupdate.
+  - `Memory Think/sprint-paper-mapping.md` — catatan TODO kategori diupdate, mismatch M14/M15/M17 ditandai selesai.
+  - `Memory Think/SPRINT1_LOG.md` — entry ini.
+- **Alasan/keputusan:**
+  - Verifikasi pakai ekstraksi teks langsung (bukan cuma percaya nama file/klaim user) tetap dipertahankan sebagai standar — terbukti berguna lagi di sesi ini karena menemukan file M7 yang di-upload user ternyata bukan paper baru (kalau langsung dipercaya nama filenya, kategori #7 akan tampak "selesai" padahal isinya duplikat).
+  - File "Form Follows Function" tidak dihapus lalu diminta unggah ulang — cukup dipindah foldernya, karena isinya sudah benar, cuma lokasinya yang salah.
+  - Delay muncul-hilang file di M7 (kemungkinan OneDrive sync) dilaporkan apa adanya ke user, bukan didiamkan, supaya user tahu ini bukan tindakan saya yang tidak disengaja.
+- **Belum dikerjakan / TODO lanjutan:**
+  - 3 file mismatch tanpa kategori jelas (Recent Advances, Voice Assistants in Everyday Life, Building Trust) masih menunggu paper pengganti — belum ada progres dari user untuk ini.
+  - Commit git untuk semua perubahan `Memory Think/*.md` sesi ini + sesi sebelumnya (2026-08-12) masih menumpuk, belum di-push.
+  - M1 (agent loop ReAct) masih belum mulai coding — tetap next step utama untuk kode.

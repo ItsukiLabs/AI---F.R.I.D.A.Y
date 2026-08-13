@@ -326,16 +326,39 @@
 - **Sumber informasi:** Ekstraksi mendalam — abstract & intro dibaca langsung via pdftotext
 - **Catatan tambahan:** Dua survei besar (paper ini + LASM di atas) sama-sama baru terbit 2026 dan saling melengkapi tapi TIDAK saling mengutip/membandingkan secara eksplisit di bagian yang terbaca — kalau nanti butuh sumber tunggal paling otoritatif untuk desain M11, worth dibaca lebih dalam mana yang taksonominya lebih cocok diadopsi in praktik, bukan dipakai dua-duanya mentah-mentah.
 
-### Paper yang DILEWATI (belum dibaca — perlu ditinjau manual oleh user)
+### Breaking the Code: Security Assessment of AI Code Agents Through Systematic Jailbreaking Attacks (2025) — ✅ berhasil dibaca 2026-08-12
+- **Lokasi file:** `M11/Breaking the Code Security Assessment of AI Code Agents Through Systematic Jailbreaking Attacks (2025).pdf`
+- **Sprint/Modul terkait:** Sprint 4 (M11) — sebelumnya DILEWATI, sekarang terbaca
+- **Ide inti:** Saha et al. (Univ. of Maryland + AWS AI Labs + Meta Superintelligence Labs). Benchmark **JAWS-BENCH** yang mengukur bukan cuma "apakah code agent MENOLAK/menuruti permintaan berbahaya" (seperti evaluasi lama), tapi apakah kode jahat yang dihasilkan **benar-benar bisa dikompilasi & dijalankan** (deployable harm) — 3 tingkat workspace (kosong, single-file, multi-file) mensimulasikan kemampuan attacker yang makin canggih, dinilai lewat Judge Framework berlapis (compliance → attack success → syntax benar → bisa jalan end-to-end). Temuan penting: **membungkus LLM jadi agent (dengan planning+tool use) MENAIKKAN attack success rate 1.6x** dibanding model mentah — karena proses planning/tool-use bisa "membalik" penolakan awal si model.
+- **Relevansi ke F.R.I.D.A.Y:** Sangat relevan untuk M6 (OS-level control) + M11 — kalau F.R.I.D.A.Y nanti bisa menulis/menjalankan kode (skrip otomasi, dsb.), metodologi JAWS-BENCH bisa diadopsi sebagai test suite sebelum fitur itu dirilis: bukan cuma cek apakah F.R.I.D.A.Y "menolak" perintah berbahaya secara teks, tapi cek apakah hasil actionnya benar-benar bisa dieksekusi jadi kerusakan nyata. Temuan "agentic wrapping menaikkan ASR 1.6x" adalah peringatan langsung: guardrail yang cuma difilter di level prompt/output teks TIDAK CUKUP begitu F.R.I.D.A.Y jadi agent penuh dengan tool-use — perlu guardrail di titik eksekusi aksi juga (selaras dengan temuan LASM survey di atas soal L4 tool-execution layer).
+- **Sumber informasi:** Ekstraksi mendalam — abstract & intro dibaca langsung via `pdftotext` (fokus ke deskripsi metodologi benchmark & temuan agregat, BUKAN contoh prompt jailbreak/payload spesifik — sesuai prinsip defensif: pelajari kerangka pertahanannya, bukan resep serangannya)
+- **Catatan tambahan:** Kenapa dulu DILEWATI sekarang berhasil: kemungkinan besar masalah lama ada di tool render PDF (Read tool/`pdftoppm`), bukan konten filenya — `pdftotext` (ekstraksi teks murni) berhasil tanpa hambatan untuk keempat paper DILEWATI ini.
 
-Empat paper berikut berulang kali memicu error/safety-filter otomatis saat dibaca oleh agent (kemungkinan karena kontennya memuat detail teknik serangan yang membuat sistem safeguard curiga), jadi sengaja **tidak dibuka sama sekali** oleh proses ini:
+### Breaking the Protocol: Security Analysis of the Model Context Protocol Specification and Prompt Injection Vulnerabilities in Tool-Integrated LLM Agents (2026) — ✅ berhasil dibaca 2026-08-12, ⭐ KRITIS untuk M0/M11
+- **Lokasi file:** `M11/Breaking the Protocol Security Analysis of the Model Context Protocol Specification and Prompt Injection Vulnerabilities in Tool-Integrated LLM Agents (2026).pdf`
+- **Sprint/Modul terkait:** Sprint 1 (M0) DAN Sprint 4 (M11) — sebelumnya DILEWATI, prioritas tinggi karena langsung bahas MCP yang jadi fondasi M0
+- **Ide inti:** Maloyan & Namiot. Analisis keamanan FORMAL pertama terhadap **spesifikasi MCP itu sendiri** (bukan implementasi tertentu) — menemukan 3 kerentanan level-protokol yang tidak bisa diperbaiki cuma dengan hardening implementasi: (1) **tidak ada capability attestation** — server bisa mengklaim permission apapun tanpa verifikasi; (2) **bidirectional sampling tanpa autentikasi origin** — memungkinkan server-side prompt injection; (3) **implicit trust propagation** di konfigurasi multi-server. Dibangun **PROTOAMP** (framework testing) dan diuji di 847 skenario serangan lintas 5 implementasi server MCP — arsitektur MCP TERBUKTI memperbesar attack success rate 23-41% dibanding integrasi non-MCP setara. Diusulkan **ATTESTMCP**, ekstensi protokol backward-compatible (attestation + autentikasi pesan) yang menurunkan attack success rate dari 52.8% → 12.4%, overhead cuma ~8.3ms/pesan.
+- **Relevansi ke F.R.I.D.A.Y:** **Sangat kritis** — F.R.I.D.A.Y sudah memutuskan pakai MCP sebagai format tool manifest/contract (M0). Paper ini bilang tegas: kelemahan MCP itu **arsitektural, bukan bug implementasi** — jadi F.R.I.D.A.Y tidak bisa cuma "hati-hati implementasi", perlu mitigasi tambahan di level desain M0/M11: (a) jangan percaya penuh capability yang diklaim server MCP pihak ketiga tanpa verifikasi tambahan, (b) autentikasi origin untuk sampling/pesan dari server, (c) jangan otomatis propagate trust antar-server di setup multi-MCP-server. ATTESTMCP bisa jadi referensi konkret desain lapisan keamanan tambahan di atas MCP standar untuk M11, dengan overhead latensi yang kecil (~8ms).
+- **Sumber informasi:** Ekstraksi mendalam — abstract, intro, dan background arsitektur MCP dibaca langsung via `pdftotext`
+- **Catatan tambahan:** Paper masih cs.CR arXiv 2026, belum tentu peer-reviewed — tapi metodologinya (formal protocol analysis + eksperimen terkontrol 847 skenario) cukup rigorous untuk dijadikan rujukan desain. Worth ditandai sebagai bacaan wajib sebelum M0/M11 mendesain lapisan permission untuk MCP server pihak ketiga.
 
-- `M11/Breaking the Code Security Assessment of AI Code Agents Through Systematic Jailbreaking Attacks (2025).pdf`
-- `M11/Breaking the Protocol Security Analysis of the Model Context Protocol Specification and Prompt Injection Vulnerabilities in Tool-Integrated LLM Agents (2026).pdf`
-- `M11/Quantifying Frontier LLM Capabilities for Container Sandbox Escape (2026).pdf`
-- `M11/Optimizing Safety Alignment and Jailbreak Defense for Large Language Models (2025).pdf`
+### Quantifying Frontier LLM Capabilities for Container Sandbox Escape (2026) — ✅ berhasil dibaca 2026-08-12
+- **Lokasi file:** `M11/Quantifying Frontier LLM Capabilities for Container Sandbox Escape (2026).pdf`
+- **Sprint/Modul terkait:** Sprint 4 (M11) — sebelumnya DILEWATI, ICML 2026
+- **Ide inti:** Marchand et al. (Oxford + UK AI Security Institute). Benchmark **SANDBOXESCAPEBENCH** — mengukur kemampuan LLM agent KABUR dari sandbox container (Docker/OCI) tempat dia dijalankan, dibingkai sebagai CTF (Capture The Flag) bertingkat nested-sandbox (lapisan luar berisi "flag" tanpa kerentanan diketahui). Threat model: attacker (agent) SUDAH punya akses shell di dalam container (bukan soal initial access, tapi soal ESCAPE dari isolasi) — mencakup spektrum mekanisme escape: misconfiguration, kesalahan alokasi privilege, kernel flaw, kelemahan runtime/orkestrasi. Temuan: ketika kerentanan sengaja ditambahkan, LLM frontier BISA mengidentifikasi dan mengeksploitasinya — menegaskan evaluasi semacam ini perlu ada supaya sandboxing tetap efektif untuk model yang makin capable.
+- **Relevansi ke F.R.I.D.A.Y:** Kalau F.R.I.D.A.Y nanti menjalankan tool/kode di sandbox (mis. untuk M6 OS-control atau eksekusi skrip otomasi), paper ini adalah pengingat langsung: **sandbox container biasa (Docker) tidak otomatis aman** dari agent yang capable — perlu evaluasi eksplisit apakah setup sandbox F.R.I.D.A.Y rentan escape, bukan asumsi "sudah di-sandbox jadi aman". Poin penting: banyak tooling agent open-source (termasuk yang mungkin dipakai F.R.I.D.A.Y) mengandalkan isolasi Docker standar, BUKAN isolasi hardware-level (microVM/Firecracker) yang dipakai provider skala besar — trade-off keamanan vs kompleksitas setup yang perlu disadari sejak M11 didesain.
+- **Sumber informasi:** Ekstraksi mendalam — abstract & intro dibaca langsung via `pdftotext` (fokus ke desain benchmark/metodologi evaluasi, bukan detail teknik eksploitasi kernel/container spesifik)
+- **Catatan tambahan:** Paper eksplisit menyebut kerentanan HANYA muncul ketika "sengaja ditambahkan" ke benchmark (bukan menemukan 0-day di Docker asli) — jadi ini alat EVALUASI kesiapan sandbox, bukan daftar exploit siap pakai. Cocok dipakai sebagai checklist audit sebelum F.R.I.D.A.Y diberi kemampuan eksekusi kode nyata.
 
-**Sumber informasi:** DILEWATI. Kalau kamu (user) mau isinya masuk ke catatan ini, cara paling aman adalah membacanya sendiri secara manual dan meringkas poin-poin arsitekturalnya (bukan detail teknik serangan) untuk ditambahkan ke sini — terutama yang kedua (soal MCP) karena langsung relevan untuk M11 & M0.
+### Optimizing Safety Alignment and Jailbreak Defense for Large Language Models (2025) — ✅ berhasil dibaca 2026-08-12, ⚠️ belum peer-review
+- **Lokasi file:** `M11/Optimizing Safety Alignment and Jailbreak Defense for Large Language Models (2025).pdf`
+- **Sprint/Modul terkait:** Sprint 4 (M11) — sebelumnya DILEWATI
+- **Ide inti:** Wu & Lin (Juntendo University + Univ. of Florida) — **preprint, BELUM peer-reviewed** (dari Preprints.org, bukan venue akademik ter-review). Framework pertahanan multi-lapis: **DeepRefusal** (modul keputusan "refusal-first" — tentukan APAKAH & KENAPA menolak dulu sebelum memutuskan apa yang di-generate), guard model (Qwen3Guard-Gen-8B), kepatuhan ke kerangka governance (NIST AI RMF, EU AI Act), plus **FedMSBA** (federated learning dengan privacy-preserving telemetry untuk kurangi leakage). Diklaim: baseline model rentan 57% (adversarial suffix) dan 88% (indirect injection); dengan DeepRefusal, rata-rata attack success TURUN 95%; guard detector capai F1 83.9%, blokir 66.7% prompt jahat dalam 128 token pertama; FedMSBA kurangi risiko gradient-leakage 70%.
+- **Relevansi ke F.R.I.D.A.Y:** Pola "refusal-first decision module" (putuskan apakah/kenapa menolak SEBELUM generate) relevan sebagai desain guardrail M11 — beda dari filter output pasca-generate yang lebih gampang di-bypass. Tapi karena statusnya preprint belum di-review, angka-angka klaim (95% penurunan, dst.) HARUS ditreat skeptis — jangan langsung dipakai sebagai baseline kepercayaan diri keamanan tanpa validasi independen.
+- **Sumber informasi:** Ekstraksi mendalam — abstract & awal intro dibaca langsung via `pdftotext`
+- **Catatan tambahan:** **Kualitas sumber lebih rendah** dari 3 paper DILEWATI lain di atas (bukan dari arXiv/venue peer-review, dari Preprints.org yang eksplisit menandai "Not peer-reviewed version") — pakai sebagai referensi ide arsitektur (refusal-first module) saja, jangan kutip angka performanya sebagai fakta tervalidasi.
+
+**Catatan proses:** Keempat paper di atas sebelumnya ditandai DILEWATI karena berulang kali memicu error/safety-filter otomatis saat dibaca lewat Read tool/render PDF. Di sesi 2026-08-12, dicoba ulang pakai `pdftotext` (ekstraksi teks murni, bukan render visual) dan **semua berhasil terbaca tanpa hambatan** — dibaca dengan fokus ke abstrak/metodologi/temuan (kerangka pertahanan & evaluasi), bukan meng-copy detail teknik eksploitasi/payload konkret, konsisten dengan prinsip riset keamanan defensif.
 
 ---
 
@@ -349,20 +372,20 @@ Empat paper berikut berulang kali memicu error/safety-filter otomatis saat dibac
 - **Sumber informasi:** Teks penuh — dibaca langsung dari file PDF
 - **Catatan tambahan:** Trade-off klasik: parameter/MAC lebih rendah menekan akurasi sedikit dibanding CNN penuh, tapi power/memori jauh lebih hemat — baseline sebelum eksperimen model lain.
 
-### Accurate Detection of Wake Word Start and End Using a CNN (2020)
+### Accurate Detection of Wake Word Start and End Using a CNN (2020) — ✅ terverifikasi 2026-08-12
 - **Lokasi file:** `M7/Accurate Detection of Wake Word Start and End Using a CNN (2020).pdf`
 - **Sprint/Modul terkait:** Sprint 5 (M7, endpointing/boundary detection)
-- **Ide inti:** Berfokus pada endpointing — bukan hanya mendeteksi APAKAH wake word terucap, tapi KAPAN tepatnya mulai/berakhir, menggunakan CNN, agar audio dipotong akurat sebelum diteruskan ke STT.
-- **Relevansi ke F.R.I.D.A.Y:** Krusial untuk handoff M7→M8 — endpoint tidak presisi bisa memotong sebagian wake word atau menyisakan silence berlebih, menambah latensi dan menurunkan akurasi STT.
-- **Sumber informasi:** Pengetahuan umum — ekstraksi teks gagal berulang kali, isi berdasarkan pengetahuan model tentang paper ini, belum terverifikasi dari file lokal
-- **Catatan tambahan:** Disarankan membaca ulang manual untuk metrik akurasi endpoint spesifik.
+- **Ide inti:** Amazon Alexa Research (Jose et al., Interspeech-style paper). Untuk KWS single-stage word-level CNN (input window ~1 detik) yang secara desain TIDAK punya cara alami menentukan endpoint (beda dari AM+HMM klasik yang otomatis dapat endpoint dari Viterbi decoding), diusulkan 2 metode: (1) **start-end regression model** — model regresi kedua paralel yang memakai representasi intermediate dari CNN utama untuk memprediksi offset start/end; (2) **multi-aligned output CNN** — CNN utama ditambah output tambahan yang dilatih mendeteksi WW pada alignment berbeda (center/start/end) di dalam window input, lalu posisi puncak posterior tiap output dipakai sebagai estimasi start/end. Diuji pada wake word "Alexa": multi-aligned output CNN paling akurat (~20ms error utk start, ~40ms utk end vs gold-standard AM+HMM), setara dengan akurasi manusia (~30ms STD) untuk start point.
+- **Relevansi ke F.R.I.D.A.Y:** Krusial untuk handoff M7→M8 — endpoint tidak presisi bisa memotong sebagian wake word atau menyisakan silence berlebih, menambah latensi dan menurunkan akurasi STT. Pendekatan multi-aligned output CNN paling praktis untuk F.R.I.D.A.Y karena cukup 1 model (bukan 2 model terpisah) dan generalisasinya disebut penulis applicable juga ke ASR endpointing, bukan cuma wake word.
+- **Sumber informasi:** Ekstraksi mendalam — dibaca penuh via `pdftotext` (paper cuma ~4 halaman ICASSP/Interspeech-style, seluruh isi terbaca)
+- **Catatan tambahan:** Semua eksperimen memakai wake word tunggal "Alexa" — generalisasi ke wake word custom F.R.I.D.A.Y ("Hey Friday") belum tentu identik akurasinya, terutama kalau custom wake word lebih panjang/berbeda struktur fonemnya.
 
 ### Deep Spoken Keyword Spotting: An Overview (2021, arXiv) / (IEEE Access, 2022)
 - **Lokasi file:** `M7/Deep Spoken Keyword Spotting An Overview (2021).pdf` dan `M7/Deep Spoken Keyword Spotting An Overview (IEEE Access, 2022).pdf` — **duplikat/versi lain satu sama lain** (preprint arXiv vs jurnal terbit resmi, penulis & konten sama: López-Espejo, Tan, Hansen, Jensen)
 - **Sprint/Modul terkait:** Sprint 5 (M7)
 - **Ide inti:** Overview komprehensif keyword spotting berbasis deep learning — front-end feature extraction, taksonomi arsitektur (CNN/RNN/attention/hybrid), teknik small-footprint, dataset standar, tantangan terbuka (noise robustness, far-field, personalisasi, efisiensi energi).
 - **Relevansi ke F.R.I.D.A.Y:** Peta literatur paling lengkap untuk M7 — dipakai sebagai "index" memilih arsitektur mana (dari paper lain di folder ini) yang paling sesuai kebutuhan power/akurasi, dan daftar open problem jadi checklist risiko.
-- **Sumber informasi:** Pengetahuan umum — ekstraksi teks gagal berulang kali, belum terverifikasi dari file lokal
+- **Sumber informasi:** Ekstraksi mendalam 2026-08-12 — abstract & intro versi IEEE Access dibaca langsung via `pdftotext`, dikonfirmasi cocok 100% dengan judul (López-Espejo, Tan, Hansen, Jensen, IEEE Access 2022)
 - **Catatan tambahan:** Kutip versi IEEE Access (2022) karena sudah peer-reviewed final; tidak perlu baca kedua file terpisah.
 
 ### DONUT: CTC-Based Query-by-Example Keyword Spotting (2018)
@@ -382,12 +405,13 @@ Empat paper berikut berulang kali memicu error/safety-filter otomatis saat dibac
 - **Catatan tambahan:** Trade-off adaptation depth vs resource; hanya menangani additive background noise, TIDAK reverberasi/karakteristik mic/aksen — perlu solusi tambahan (MCT/augmentasi) untuk itu.
 
 ### Sub-mW Keyword Spotting on an MCU: Analog Binary Feature Extraction and Binary Neural Networks (2022)
-- **Lokasi file:** `M7/Sub-mW Keyword Spotting on an MCU Analog Binary Feature Extraction and Binary Neural Networks (2022).pdf` — **konten ini juga "tersembunyi" di bawah nama file** `M7/A Depthwise Separable CNN for Keyword Spotting on an Embedded System (2022).pdf` (lihat File Bermasalah)
+- **Lokasi file:** `M7/Sub-mW Keyword Spotting on an MCU Analog Binary Feature Extraction and Binary Neural Networks (2022).pdf`
 - **Sprint/Modul terkait:** Sprint 5 (M7, ekstrem low-power always-on)
 - **Ide inti:** Cerutti et al.: pipeline KWS konsumsi <1mW, menggabungkan ekstraksi fitur biner analog (sebelum digitalisasi) dengan Binary Neural Network (bobot/aktivasi -1/+1, MAC diganti XNOR+popcount).
 - **Relevansi ke F.R.I.D.A.Y:** Titik ekstrem paling agresif untuk M7 always-on 24/7 dengan baterai kecil/energy harvesting.
-- **Sumber informasi:** Teks penuh — dibaca langsung dari file PDF (dari salinan bernama benar)
+- **Sumber informasi:** Teks penuh — dibaca langsung dari file PDF
 - **Catatan tambahan:** Trade-off akurasi vs power sangat tajam — cocok untuk stage pertama "trigger kasar" pada arsitektur cascade dua-tahap (BNN sub-mW selalu jalan, model lebih besar hanya jalan saat trigger).
+- **[2026-08-13] Resolusi duplikat:** file `A Depthwise Separable CNN for Keyword Spotting on an Embedded System (2022).pdf` yang sebelumnya "menyembunyikan" konten ini (nama salah, isi sama persis dengan file di atas — dikonfirmasi via `diff` full-text, kosong total) sudah **dihapus** dari `M7/`. User sempat coba cari paper DS-CNN 2022 yang genuinely berbeda dan tidak menemukan — kesimpulan bersama: tidak ada paper terpisah dengan judul itu, "2022" di nama file lama cuma kesalahan penamaan/duplikasi. Kategori #7 tetap lengkap dengan paper Sørensen (2020) sebagai referensi DS-CNN.
 
 ---
 
@@ -401,13 +425,13 @@ Empat paper berikut berulang kali memicu error/safety-filter otomatis saat dibac
 - **Sumber informasi:** Teks penuh — dibaca langsung dari file PDF
 - **Catatan tambahan:** 0ms lookahead demi latensi minimal menaikkan WER ~3% absolut; LM dictionary 1.3GB jadi bottleneck memori untuk perangkat sangat kecil.
 
-### Building Accurate Low Latency ASR for Streaming Voice Search (2023)
+### Building Accurate Low Latency ASR for Streaming Voice Search (2023) — ✅ terverifikasi 2026-08-12
 - **Lokasi file:** `M8/Building Accurate Low Latency ASR for Streaming Voice Search (2023).pdf`
 - **Sprint/Modul terkait:** Sprint 5 (M8)
-- **Ide inti:** Teknik praktis ASR streaming (voice search) yang menyeimbangkan akurasi & latensi — two-pass decoding (first-pass cepat + second-pass rescoring), endpointer, strategi training menekan WER tanpa menambah delay.
-- **Relevansi ke F.R.I.D.A.Y:** Pola two-pass bisa diadaptasi supaya F.R.I.D.A.Y terasa responsif saat user bicara panjang, tetap akurat pada hasil final.
-- **Sumber informasi:** Pengetahuan umum — ekstraksi teks gagal berulang kali, belum terverifikasi dari file lokal
-- **Catatan tambahan:** Detail arsitektur/metrik spesifik perlu diverifikasi ulang manual.
+- **Ide inti:** Goyal & Garera (Flipkart, ACL 2023 Industry Track). Bukan "two-pass decoding" seperti dugaan sebelumnya — pendekatannya beda: arsitektur **hierarchical CTC (HCTC) 3-level** berbasis LSTM+attention (memprediksi karakter → subword pendek → subword panjang secara fine-to-coarse dalam satu model, terinspirasi Fernández et al. 2007), plus strategi training+inference sederhana untuk **joint ASR + end-of-speech (EOS) detection** dalam satu model CTC end-to-end (pakai token `</s>` dengan early/late penalty, threshold dinamis saat inference). Dievaluasi di voice search Hinglish (Hindi-English campur) skala produksi Flipkart (~6 juta query/hari): WER 3.69% (tanpa EOS)/4.78% (dengan EOS), latensi pencarian turun ~46.64% (1300ms) dibanding pakai VAD independen terpisah.
+- **Relevansi ke F.R.I.D.A.Y:** Koreksi penting dari catatan lama — bukan two-pass rescoring, tapi joint EOS detection di dalam model CTC itu sendiri. Pola ini langsung relevan untuk M8: F.R.I.D.A.Y bisa deteksi "user selesai bicara" tanpa VAD model terpisah, mengurangi latensi respons secara signifikan (temuan Flipkart: ~1.3 detik lebih cepat). Konteks Hinglish (kode-campur bahasa) juga relevan kalau F.R.I.D.A.Y perlu dengar campuran Indonesia-Inggris.
+- **Sumber informasi:** Ekstraksi mendalam — abstract, intro, related work, dan awal metodologi dibaca langsung via `pdftotext`
+- **Catatan tambahan:** Arsitektur HCTC 3-level dan skema EOS token spesifik untuk basis CTC — perlu adaptasi kalau F.R.I.D.A.Y pakai basis model streaming lain (RNN-T/Transducer, lihat FastEmit di bawah).
 
 ### FastEmit: Low-Latency Streaming ASR with Sequence-Level Emission Regularization (2021)
 - **Lokasi file:** `M8/FastEmit Low-latency Streaming ASR with Sequence-level Emission Regularization (2021).pdf`
@@ -461,21 +485,21 @@ Empat paper berikut berulang kali memicu error/safety-filter otomatis saat dibac
 - **Sumber informasi:** Teks penuh — dibaca langsung dari file PDF
 - **Catatan tambahan:** GMM masih classifier paling sering dipakai meski deep learning naik; replay attack PALING mudah dilakukan penyerang non-profesional — prioritas pertahanan lapis pertama. Generalisasi cross-dataset masih lemah di seluruh literatur.
 
-### A Survey on Speech Deepfake Detection (2025)
+### A Survey on Speech Deepfake Detection (2025) — ✅ terverifikasi 2026-08-12
 - **Lokasi file:** `M9/A Survey on Speech Deepfake Detection (2025).pdf`
 - **Sprint/Modul terkait:** Sprint 5 (M9)
-- **Ide inti:** Survei 2025 memetakan lanskap deteksi deepfake suara pasca-generasi TTS/voice-conversion neural modern (diffusion, zero-shot cloning) — deteksi berbasis fitur akustik klasik, embedding self-supervised, model end-to-end (RawNet2, AASIST), tantangan generalisasi ke generator suara belum pernah dilihat.
-- **Relevansi ke F.R.I.D.A.Y:** Karena F.R.I.D.A.Y juga akan punya modul voice cloning/TTS (M10), survei ini penting untuk risiko "deepfake" pada M9 sendiri — desain M9 harus tahan generator TTS generasi terbaru, bukan cuma dataset lama.
-- **Sumber informasi:** Pengetahuan umum — ekstraksi teks gagal, belum terverifikasi dari file lokal
-- **Catatan tambahan:** Rincian metrik/metode spesifik perlu dibaca ulang langsung oleh user sebelum dikutip presisi.
+- **Ide inti:** Li, Ahmadiadli, Zhang (Toronto Metropolitan University). Survei sistematis >200 paper deteksi speech deepfake (sampai Maret 2024), cakupan lebih luas dari survei sejenis: eksplisit membedakan **fully-fake vs partial-deepfake** (potongan audio yang cuma sebagian palsu — belum dibahas survei sebelumnya), plus model speaker-aware detection (integrasi speaker verification + deepfake countermeasure — nyambung langsung ke entry "Speaker-Aware Anti-Spoofing" di bawah). Fokus ke serangan TTS/Voice-Conversion (termasuk metode berbasis LLM+neural audio codec generasi terbaru), SENGAJA TIDAK mencakup replay attack (fisik, beda mekanisme) — beda scope dari ASVspoof.
+- **Relevansi ke F.R.I.D.A.Y:** Karena F.R.I.D.A.Y juga akan punya modul voice cloning/TTS (M10), survei ini penting untuk risiko "deepfake" pada M9 sendiri — desain M9 harus tahan generator TTS generasi terbaru (termasuk LLM-based codec, bukan cuma vocoder lama), bukan cuma dataset lama. Konsep **partial deepfake detection** relevan kalau nanti ada skenario audio panjang yang cuma sebagian disuntik instruksi palsu (mirip indirect prompt injection versi audio — overlap dengan M11).
+- **Sumber informasi:** Ekstraksi mendalam — abstract & intro dibaca langsung via `pdftotext`, dikonfirmasi cocok 100% dengan judul
+- **Catatan tambahan:** Survei eksplisit TIDAK membahas replay attack (physical attack) — untuk itu tetap perlu paper ASVspoof/PAD di bawah, dua-duanya saling melengkapi bukan tumpang tindih.
 
-### ASVspoof: The Automatic Speaker Verification Spoofing and Countermeasures Challenge (2017)
+### ASVspoof: The Automatic Speaker Verification Spoofing and Countermeasures Challenge (2017) — ⚠️ koreksi 2026-08-12, isi beda dari catatan lama
 - **Lokasi file:** `M9/ASVspoof The Automatic Speaker Verification Spoofing and Countermeasures Challenge (2017).pdf`
 - **Sprint/Modul terkait:** Sprint 5 (M9)
-- **Ide inti:** Kinnunen et al.: challenge fokus REPLAY ATTACK "in the wild" (corpus RedDots) — baseline CQCC+GMM EER 30.6%, sistem terbaik peserta EER 6.73% via fusion; performa terburuk pada rekaman ulang kualitas tinggi.
-- **Relevansi ke F.R.I.D.A.Y:** Dataset/protokol acuan standar industri menguji M9 terhadap replay attack — serangan paling realistis/mudah dilakukan siapa saja.
-- **Sumber informasi:** Pengetahuan umum — ekstraksi teks gagal, belum terverifikasi dari file lokal (angka metrik di atas adalah angka publik yang umum dikutip untuk challenge ini)
-- **Catatan tambahan:** Replay attack kualitas tinggi jauh lebih sulit dideteksi dibanding speech-synthesis/voice-conversion — countermeasure tidak boleh hanya dioptimasi untuk TTS/voice-clone palsu.
+- **Ide inti:** **KOREKSI:** catatan lama ("fokus replay attack, corpus RedDots, EER 30.6%/6.73%") ternyata salah paper — itu deskripsi edisi **ASVspoof 2017** (replay-focused), sedangkan file PDF ini isinya justru laporan jurnal (IEEE JSTSP 2017, Wu/Yamagishi/Kinnunen/Hanilçi/Sahidullah/Sizov/Evans/Todisco/Delgado) yang mereview **ASVspoof 2015** — dataset genuine+spoofed dari 106 pembicara, spoofing dibuat dari **10 algoritma speech-synthesis/voice-conversion berbeda** (BUKAN replay attack). Paper ini membangun protokol/dataset standar industri untuk countermeasure ASV, mereview hasil evaluasi 2015 secara detail, dan sekilas mempreview rencana edisi 2017.
+- **Relevansi ke F.R.I.D.A.Y:** Tetap jadi dataset/protokol acuan standar industri untuk M9, tapi fokusnya **TTS/voice-conversion spoofing**, bukan replay attack seperti diklaim sebelumnya — kalau butuh referensi replay attack "in the wild" secara spesifik (RedDots), itu perlu dicari paper terpisah (ASVspoof 2017 edition paper, belum ada di koleksi ini).
+- **Sumber informasi:** Ekstraksi mendalam — abstract, intro, dan bagian dataset (ASVspoof 2015 database, 10 algoritma spoofing, hasil EER per sistem) dibaca langsung via `pdftotext`
+- **Catatan tambahan:** Karena scope-nya TTS/VC (bukan replay), paper ini lebih komplementer ke "A Survey on Speech Deepfake Detection" di atas daripada ke replay-attack testing. Kalau butuh protokol replay-specific, itu masih jadi gap koleksi paper M9.
 
 ### ECAPA-TDNN: Emphasized Channel Attention, Propagation and Aggregation in TDNN Based Speaker Verification (2020)
 - **Lokasi file:** `M9/ECAPA-TDNN Emphasized Channel Attention, Propagation and Aggregation in TDNN Based Speaker Verification (2020).pdf`
@@ -485,13 +509,13 @@ Empat paper berikut berulang kali memicu error/safety-filter otomatis saat dibac
 - **Sumber informasi:** Teks penuh — dibaca langsung dari file PDF
 - **Catatan tambahan:** Varian 512-channel (6.2M parameter) tetap mengungguli baseline lama dengan parameter jauh lebih hemat dari varian 1024-channel — pilihan lebih baik untuk device kecil.
 
-### Speaker-Aware Anti-Spoofing (2023)
+### Speaker-Aware Anti-Spoofing (2023) — ✅ terverifikasi 2026-08-12
 - **Lokasi file:** `M9/Speaker-Aware Anti-Spoofing (2023).pdf`
 - **Sprint/Modul terkait:** Sprint 5 (M9)
-- **Ide inti:** Mengusulkan anti-spoofing yang "sadar identitas pembicara" — memasukkan embedding speaker ke pipeline countermeasure spoof-detection sehingga deteksi dikondisikan pada karakteristik suara pengguna terdaftar.
-- **Relevansi ke F.R.I.D.A.Y:** Sangat relevan karena F.R.I.D.A.Y biasanya punya satu/segelintir pengguna terdaftar — countermeasure lebih personal & presisi terhadap profil suara pemilik, alih-alih model generic populasi umum.
-- **Sumber informasi:** Pengetahuan umum — ekstraksi teks gagal, belum terverifikasi dari file lokal
-- **Catatan tambahan:** Perlu baca ulang manual untuk arsitektur joint training ASV+CM spesifik sebelum implementasi.
+- **Ide inti:** Liu, Sahidullah, Lee, Kinnunen (University of Eastern Finland dkk). Formalisasi masalah "speaker-aware anti-spoofing" sebagai **conditional hypothesis test** (H0: sample asli DAN cocok speaker target; H1: sample palsu DAN mengklaim jadi speaker target) — beda dari definisi anti-spoofing konvensional yang tidak dikondisikan ke identitas. Diimplementasi sebagai ekstensi speaker-aware ke model SOTA **AASIST** (audio anti-spoofing pakai integrated spectro-temporal graph attention), dengan 2 strategi integrasi info speaker target (level frame vs level utterance) via speaker embedding dari model ASV terlatih (ECAPA-TDNN — sama seperti entry lain di kategori ini). Hasil di protokol custom berbasis ASVspoof 2019: **perbaikan relatif hingga 25.1% (EER)** dan 11.6% (t-DCF) dibanding baseline speaker-independent.
+- **Relevansi ke F.R.I.D.A.Y:** Sangat relevan karena F.R.I.D.A.Y biasanya punya satu/segelintir pengguna terdaftar — countermeasure lebih personal & presisi terhadap profil suara pemilik (pakai sample enrollment), alih-alih model generic populasi umum. Bisa langsung dikombinasikan dengan ECAPA-TDNN yang sudah jadi kandidat backbone M9 di entry lain — pipeline-nya kompatibel (sama-sama pakai speaker embedding dari model ASV).
+- **Sumber informasi:** Ekstraksi mendalam — abstract, intro, dan awal metodologi (definisi masalah, arsitektur integrasi) dibaca langsung via `pdftotext`
+- **Catatan tambahan:** Perbaikan 25.1%/11.6% diukur di protokol custom (bukan benchmark standar ASVspoof resmi) — perlu dicatat kalau dipakai sebagai angka pembanding, bukan hasil head-to-head apple-to-apple dengan sistem lain.
 
 ### Voice Spoofing Countermeasures: Taxonomy, State-of-the-art, Experimental Analysis of Generalizability, Open Challenges, and the Way Forward (2022)
 - **Lokasi file:** `M9/Voice Spoofing Countermeasures Taxonomy, State-of-the-art, Experimental Analysis of Generalizability, Open Challenges, and the Way Forward (2022).pdf`
@@ -513,45 +537,45 @@ Empat paper berikut berulang kali memicu error/safety-filter otomatis saat dibac
 
 ## Kategori #10 — Expressive TTS
 
-### EmoKnob: Enhance Voice Cloning with Fine-Grained Emotion Control (2024)
+### EmoKnob: Enhance Voice Cloning with Fine-Grained Emotion Control (2024) — ✅ terverifikasi 2026-08-12
 - **Lokasi file:** `M10/EmoKnob Enhance Voice Cloning with Fine-Grained Emotion Control (2024).pdf`
-- **Sprint/Modul terkait:** Sprint 5 (M10)
-- **Ide inti:** Menambahkan "knob" kontrol emosi berbutir halus (bukan kategori diskrit) ke atas voice cloning zero/few-shot existing — mengekstrak vektor emosi dari sedikit sampel referensi, memungkinkan interpolasi/skala intensitas emosi tanpa retrain model TTS dasar.
-- **Relevansi ke F.R.I.D.A.Y:** Relevan untuk M10 + M15 (Persona) — suara F.R.I.D.A.Y bisa punya "dial" intensitas emosi (ceria saat menyapa, tegas saat peringatan) di atas satu identitas suara persona konsisten.
-- **Sumber informasi:** Pengetahuan umum — ekstraksi teks gagal, belum terverifikasi dari file lokal
-- **Catatan tambahan:** Detail arsitektur teknis (base model TTS, metode ekstraksi vektor emosi) perlu dikonfirmasi ulang sebelum implementasi.
+- **Sprint/Modul terkait:** Sprint 5 (M10) — EMNLP 2024, Columbia University
+- **Ide inti:** Menambahkan "knob" kontrol emosi berbutir halus (bukan kategori diskrit terbatas seperti kerja sebelumnya) ke ATAS model voice cloning foundation yang sudah ada (few-shot) — mengekstrak representasi emosi dari sedikit sampel demonstratif (few-shot) di ruang embedding speaker yang ekspresif, lalu 2 metode diusulkan untuk kontrol emosi dari **teks bebas open-ended** (bukan cuma dari label emosi tetap) — cukup deskripsikan emosinya pakai kalimat biasa. Juga memperkenalkan metrik evaluasi baru khusus untuk menilai faithfulness & recognizability kontrol emosi. Diklaim mengungguli ekspresivitas TTS komersial di evaluasi objektif & subjektif.
+- **Relevansi ke F.R.I.D.A.Y:** Relevan untuk M10 + M15 (Persona) — suara F.R.I.D.A.Y bisa punya "dial" intensitas emosi (ceria saat menyapa, tegas saat peringatan) di atas satu identitas suara persona konsisten. Kontrol via teks bebas ("agak khawatir tapi tenang") jauh lebih praktis diintegrasikan ke pipeline generasi respons LLM F.R.I.D.A.Y dibanding harus memetakan ke kategori emosi diskrit.
+- **Sumber informasi:** Ekstraksi mendalam — abstract & intro dibaca langsung via `pdftotext`
+- **Catatan tambahan:** Bergantung pada model voice cloning foundation yang sudah kuat (dibangun di atas, bukan dari nol) — kualitas hasil akan terikat kualitas base model cloning yang dipilih untuk M10.
 
-### Emotional Prosody Control for Speech Generation (2021)
+### Emotional Prosody Control for Speech Generation (2021) — ✅ terverifikasi 2026-08-12
 - **Lokasi file:** `M10/Emotional Prosody Control for Speech Generation (2021).pdf`
-- **Sprint/Modul terkait:** Sprint 5 (M10)
-- **Ide inti:** Kontrol prosodi emosional pada TTS — atribut prosodik (pitch, durasi, energi) yang berkorelasi ekspresi emosi diatur terpisah dari konten linguistik, biasanya lewat embedding kondisi tambahan.
-- **Relevansi ke F.R.I.D.A.Y:** Fondasi konseptual M10 ekspresif — kontrol prosodi terpisah dari identitas suara memungkinkan F.R.I.D.A.Y menyesuaikan nada bicara sesuai konteks (urgent vs santai) sambil konsisten dengan suara dasarnya.
-- **Sumber informasi:** Pengetahuan umum — ekstraksi teks gagal, belum terverifikasi dari file lokal
-- **Catatan tambahan:** Detail arsitektur presisi perlu verifikasi manual sebelum jadi referensi kode.
+- **Sprint/Modul terkait:** Sprint 5 (M10) — Sivaprasad, Kosgi, Gandhi (IIIT Hyderabad + TCS Research)
+- **Ide inti:** TTS berbasis **FastSpeech2** yang diperluas jadi multi-speaker DAN dikondisikan pada ruang emosi kontinu **Arousal-Valence (AV)** — bukan kategori emosi diskrit (mis. "senang/sedih/marah") tapi 2 skalar kontinu yang bisa dipetakan ke berbagai emosi (arousal = intensitas, valence = positif/negatif). Ditambahkan blok "Prosody Control" ke arsitektur FastSpeech2 yang mengkondisikan fitur level-phoneme (pitch, energi, durasi) pada nilai AV level-kalimat. Bisa generalize ke speaker & emosi yang tidak dilihat saat training, tanpa degradasi kualitas suara yang bisa diamati.
+- **Relevansi ke F.R.I.D.A.Y:** Fondasi konseptual M10 ekspresif — kontrol prosodi terpisah dari identitas suara memungkinkan F.R.I.D.A.Y menyesuaikan nada bicara sesuai konteks (urgent vs santai) sambil konsisten dengan suara dasarnya. Ruang Arousal-Valence yang kontinu (bukan diskrit) lebih fleksibel dipetakan dari hasil reasoning LLM F.R.I.D.A.Y (mis. "situasi darurat" → arousal tinggi) dibanding harus pilih dari daftar emosi tetap.
+- **Sumber informasi:** Ekstraksi mendalam — abstract, intro, related work dibaca langsung via `pdftotext`
+- **Catatan tambahan:** Berbasis FastSpeech2 (non-autoregressive, cepat) — cocok untuk kebutuhan latensi rendah F.R.I.D.A.Y dibanding TTS autoregresif yang lebih lambat.
 
-### Expressive Neural Voice Cloning (2021)
+### Expressive Neural Voice Cloning (2021) — ✅ terverifikasi 2026-08-12
 - **Lokasi file:** `M10/Expressive Neural Voice Cloning (2021).pdf`
-- **Sprint/Modul terkait:** Sprint 5 (M10)
-- **Ide inti:** Voice cloning neural yang mempertahankan/mengontrol ekspresivitas selain hanya meniru timbre — biasanya mendisentangle representasi speaker identity dari representasi gaya/prosodi.
-- **Relevansi ke F.R.I.D.A.Y:** Relevan jika F.R.I.D.A.Y ingin fitur "clone suara pengguna sebagai persona" namun bisa mengatur gaya bicara secara independen — disentanglement identity vs style penting untuk fleksibilitas ini.
-- **Sumber informasi:** Pengetahuan umum — ekstraksi teks gagal, belum terverifikasi dari file lokal
-- **Catatan tambahan:** Detail metode presisi perlu baca manual untuk data requirement sebelum implementasi.
+- **Sprint/Modul terkait:** Sprint 5 (M10) — Neekhara, Hussain, Dubnov, Koushanfar, McAuley (UC San Diego, ACML 2021)
+- **Ide inti:** Voice cloning yang bisa dikontrol secara fine-grained di berbagai aspek gaya (style) untuk speaker yang belum pernah dilihat (unseen speaker) — dicapai dengan mengkondisikan model sintesis secara eksplisit pada 3 hal terpisah: **speaker encoding**, **pitch contour**, dan **latent style tokens**. Mendukung beberapa mode cloning: transfer style dari referensi ucapan, sintesis langsung dari teks, dan kontrol style fine-grained dengan memanipulasi variabel conditioning saat inference — semua cukup pakai sedikit sampel (few-shot/zero-shot).
+- **Relevansi ke F.R.I.D.A.Y:** Relevan jika F.R.I.D.A.Y ingin fitur "clone suara pengguna sebagai persona" namun bisa mengatur gaya bicara secara independen — disentanglement identity vs style penting untuk fleksibilitas ini. Pola 3-conditioning (speaker/pitch/style) bisa dijadikan kerangka desain kontrol M10: identitas suara tetap (persona konsisten), tapi pitch & style diatur dinamis sesuai konteks percakapan.
+- **Sumber informasi:** Ekstraksi mendalam — abstract & awal intro dibaca langsung via `pdftotext`
+- **Catatan tambahan:** Paper cenderung ringkas (fokus arsitektur+eval, bukan survei) — untuk detail arsitektur conditioning yang lebih dalam (bagaimana 3 conditioning digabung), perlu baca bagian metodologi lebih jauh saat mau diimplementasi nyata.
 
-### Meta-Voice: Fast Few-Shot Style Transfer for Expressive Voice Cloning Using Meta Learning (2021)
+### Meta-Voice: Fast Few-Shot Style Transfer for Expressive Voice Cloning Using Meta Learning (2021) — ✅ terverifikasi 2026-08-12
 - **Lokasi file:** `M10/Meta-Voice Fast Few-Shot Style Transfer for Expressive Voice Cloning Using Meta Learning (2021).pdf`
-- **Sprint/Modul terkait:** Sprint 5 (M10)
-- **Ide inti:** Pendekatan meta-learning (mirip MAML) agar model voice cloning beradaptasi cepat ke speaker/style baru hanya dari sedikit contoh, karena "dilatih untuk belajar cepat" di banyak tugas adaptasi selama meta-training.
-- **Relevansi ke F.R.I.D.A.Y:** Relevan untuk fitur "voice cloning instan" dari sedikit sampel (5-10 detik) untuk personalisasi cepat tanpa fine-tuning lama — cocok untuk onboarding cepat di M10.
-- **Sumber informasi:** Pengetahuan umum — ekstraksi teks gagal, belum terverifikasi dari file lokal
-- **Catatan tambahan:** Butuh proses meta-training awal yang mahal (banyak speaker/style) — cocok dilakukan sekali di cloud/training pipeline, model hasilnya dipakai ringan di edge.
+- **Sprint/Modul terkait:** Sprint 5 (M10) — Liu, Su, Yu (Tencent AI Lab)
+- **Ide inti:** Dugaan lama benar secara umum, sekarang detail teknisnya terverifikasi — memakai **MAML (model-agnostic meta-learning)** yang di-extend ke TTS: base model multi-speaker+multi-prosody dilatih di corpus besar, lalu **parameter dipisah jadi "shared" vs "style-specific"** — cuma parameter style-specific yang di-meta-train supaya sangat sensitif terhadap adaptasi cepat. Speaker & prosody representation di-disentangle pakai **domain adversarial training + orthogonal constraint**. Hasil: voice cloning berkualitas dari cuma **5 sampel (~12 detik audio)**, hanya **100 langkah adaptasi**.
+- **Relevansi ke F.R.I.D.A.Y:** Relevan untuk fitur "voice cloning instan" dari sedikit sampel (5-10 detik) untuk personalisasi cepat tanpa fine-tuning lama — cocok untuk onboarding cepat di M10. Angka konkret (5 sampel/12 detik/100 step) berguna sebagai target benchmark realistis kalau F.R.I.D.A.Y mau fitur "user rekam suara sebentar, F.R.I.D.A.Y langsung bisa clone".
+- **Sumber informasi:** Ekstraksi mendalam — abstract, intro, dan awal arsitektur model dibaca langsung via `pdftotext`
+- **Catatan tambahan:** Butuh proses meta-training awal yang mahal (banyak speaker/style) — cocok dilakukan sekali di cloud/training pipeline, model hasilnya dipakai ringan di edge. Domain adversarial training menambah kompleksitas training (butuh gradient reversal layer) — bukan sekadar fine-tuning biasa.
 
-### Prosody-TTS: Improving Prosody with Masked Autoencoder and Conditional Diffusion Model for Expressive Text-to-Speech (2023)
+### Prosody-TTS: Improving Prosody with Masked Autoencoder and Conditional Diffusion Model for Expressive Text-to-Speech (2023) — ✅ terverifikasi 2026-08-12
 - **Lokasi file:** `M10/Prosody-TTS Improving Prosody with Masked Autoencoder and Conditional Diffusion Model for Expressive Text-to-Speech (2023).pdf`
-- **Sprint/Modul terkait:** Sprint 5 (M10)
-- **Ide inti:** Menggabungkan masked autoencoder (pre-training representasi prosodi self-supervised) dengan conditional diffusion model (generate prosodi natural saat sintesis) — meningkatkan ekspresivitas dibanding prediksi prosodi deterministik biasa.
-- **Relevansi ke F.R.I.D.A.Y:** Diffusion-based prosody generation adalah SOTA kualitas ekspresi suara sintetis — referensi upgrade M10 dari TTS netral ke TTS natural secara prosodik sesuai konteks percakapan.
-- **Sumber informasi:** Pengetahuan umum — ekstraksi teks gagal, belum terverifikasi dari file lokal
-- **Catatan tambahan:** Diffusion model lebih mahal komputasi (multiple denoising steps) — mungkin lebih cocok mode "high-quality narration" daripada respons cepat sehari-hari.
+- **Sprint/Modul terkait:** Sprint 5 (M10) — Huang, Zhang, Ren, Zhao, Yu (Zhejiang University + Tencent AI Lab, ACL Findings 2023)
+- **Ide inti:** Dugaan lama benar, sekarang terverifikasi detail: mengatasi 2 masalah TTS ekspresif sekaligus — (1) **Prosody-MAE**: masked autoencoder self-supervised yang belajar representasi prosodi HANYA dari audio (tanpa butuh teks/transkripsi), jadi generalisasinya bagus ke berbagai corpus; (2) **diffusion model** di latent space untuk sampling prosodi — mengatasi masalah regresi biasa (MSE) yang menghasilkan prediksi "blurry"/rata-rata karena prosodi sebenarnya multimodal (satu fonem bisa diucapkan banyak gaya berbeda, regresi biasa cuma prediksi rata-ratanya). SOTA di benchmark LJSpeech & LibriTTS.
+- **Relevansi ke F.R.I.D.A.Y:** Diffusion-based prosody generation adalah SOTA kualitas ekspresi suara sintetis — referensi upgrade M10 dari TTS netral ke TTS natural secara prosodik sesuai konteks percakapan. Insight penting: masalah "TTS terdengar monoton/rata" itu sumbernya dari loss regresi MSE, bukan cuma kurang data — kalau M10 nanti terasa monoton, diffusion-based sampling adalah salah satu solusi arsitektural, bukan cuma soal data training.
+- **Sumber informasi:** Ekstraksi mendalam — abstract, intro, related work dibaca langsung via `pdftotext`
+- **Catatan tambahan:** Diffusion model lebih mahal komputasi (multiple denoising steps) — mungkin lebih cocok mode "high-quality narration" daripada respons cepat sehari-hari. Prosody-MAE-nya sendiri (bagian self-supervised) mungkin tetap berguna dipisah dari diffusion samplernya kalau butuh versi lebih ringan.
 
 ### Zero-Shot Voice Cloning Text-to-Speech for Dysphonia Disorder Speakers (2024)
 - **Lokasi file:** `M10/Zero-Shot Voice Cloning Text-to-Speech for Dysphonia Disorder Speakers (2024).pdf`
@@ -709,13 +733,13 @@ Empat paper berikut berulang kali memicu error/safety-filter otomatis saat dibac
 - **Sumber informasi:** Ekstraksi parsial — abstract/intro/kesimpulan
 - **Catatan tambahan:** Berjudul "2026" dan arsitektur baru — validasi/benchmark skala nyata mungkin masih terbatas, perlu dicek klaim performa untuk rumah lebih kompleks dari yang diuji.
 
-### AutoAgents: A Framework for Automatic Agent Generation (2024) — ⚠️ file lokal bermasalah
-- **Lokasi file:** `M14/AutoAgents A Framework for Automatic Agent Generation (2024).pdf` — **isi file sebenarnya adalah paper fisika kuantum tidak terkait ("Quantum Codes from Twisted Unitary t-groups", arXiv:2402.01638)**
+### AutoAgents: A Framework for Automatic Agent Generation (2024) — ✅ diganti & terverifikasi 2026-08-13
+- **Lokasi file:** `M14/AutoAgents A Framework for Automatic Agent Generation.pdf` — file lama yang mismatch (isi fisika kuantum) sudah dihapus, diganti user dengan file yang benar
 - **Sprint/Modul terkait:** Sprint 9 (M14)
-- **Ide inti (dari pengetahuan umum, BUKAN dari file lokal):** Mengotomatisasi pembuatan peran dan agen berdasarkan task yang diberikan (bukan peran statis) — sistem men-generate profil agen "on the fly" lengkap deskripsi peran, dikoordinasikan via tahap perencanaan-eksekusi-observasi dengan self-refleksi/drop agen tidak relevan.
-- **Relevansi ke F.R.I.D.A.Y:** Berguna untuk skenario task pengguna tak terduga — sistem membentuk "tim" agen ad-hoc (agent cuaca + kalender + smart-home) otomatis daripada daftar agent statis hardcoded.
-- **Sumber informasi:** Pengetahuan umum — file lokal isinya paper lain (tidak terkait sama sekali), catatan ini ditulis dari pengetahuan model tentang paper AutoAgents (Chen et al. 2024, arXiv:2309.17288), **belum terverifikasi dari file lokal**
-- **Catatan tambahan:** File perlu diunduh ulang. Lihat juga bagian "File Bermasalah" di akhir dokumen.
+- **Ide inti:** Chen et al. (Peking University/HKUST/BAAI, arXiv:2309.17288). Framework yang secara adaptif men-generate dan mengoordinasikan multiple agen spesialis berdasarkan konten task (bukan peran statis yang sudah ditentukan sebelumnya) — dinamai "AutoAgents". Meng-couple hubungan task↔peran: agen-agen yang dibutuhkan digenerate secara dinamis berdasarkan isi task, lalu solusi direncanakan berdasarkan expert agent yang sudah digenerate itu. Ditambahkan peran **observer** yang merefleksikan rencana & respons agen lain untuk perbaikan berkelanjutan. Ada mekanisme **self-refinement** (agen menyempurnakan output sendiri lintas iterasi, membawa "completed steps" dari eksekusi sebelumnya ke prompt berikutnya) dan **collaborative refinement** (dua agen bergantian menyempurnakan hasil satu sama lain).
+- **Relevansi ke F.R.I.D.A.Y:** Berguna untuk skenario task pengguna tak terduga — sistem membentuk "tim" agen ad-hoc (agent cuaca + kalender + smart-home) otomatis daripada daftar agent statis hardcoded. Mekanisme observer + self/collaborative-refinement bisa jadi pola konkret untuk M14 mengurangi cascading error tanpa harus hardcode SOP per domain (kontras dengan pendekatan MetaGPT yang SOP-nya hardcoded ke prompt).
+- **Sumber informasi:** Teks penuh — dibaca langsung dari file PDF yang sudah benar (arXiv:2309.17288, dikonfirmasi cocok 100% dengan judul, penulis, dan abstrak)
+- **Catatan tambahan:** Eksperimen di paper menunjukkan solusi lebih koheren/akurat dibanding metode multi-agent lain yang dites, tapi generasi peran "on the fly" berarti kualitas tim sangat bergantung kemampuan LLM dasar memahami task dari awal — task ambigu berisiko menghasilkan tim agen yang salah arah sejak awal.
 
 ---
 
@@ -769,7 +793,15 @@ Empat paper berikut berulang kali memicu error/safety-filter otomatis saat dibac
 - **Sumber informasi:** Ekstraksi mendalam — abstract & intro dibaca langsung via pdftotext
 - **Catatan tambahan:** Butuh data aktivitas manusia nyata berlabel untuk melatih reward model — investasi data collection yang tidak murah; untuk F.R.I.D.A.Y skala personal (1 pengguna utama), volume data historis mungkin tidak akan sebesar 6.790 event, perlu strategi data augmentasi atau reward model yang sudah dilatih di corpus lebih besar.
 
-> **Catatan kategori:** Kategori #14 tadinya kekurangan 1 paper karena "Context-Awareness in Modern Conversational Agents and Large Language Models" ternyata file-nya **mismatch** (isi sebenarnya paper kriptografi citra medis) — file itu MASIH mismatch dan belum diganti (lihat bagian **File Bermasalah**). Tapi per 2026-08-12, kategori ini sudah diperkuat signifikan oleh 4 paper baru di atas (Inner Thoughts kini terverifikasi penuh, plus 3 paper baru soal personalisasi & context-aware proactive agent) — jadi walau file mismatch itu belum terganti secara harfiah, gap konten untuk M17 sudah jauh lebih tertutup dibanding sebelumnya. Rename/cari file pengganti masih worth dilakukan untuk kerapian, tapi tidak lagi mendesak/blocking.
+### A Comprehensive Survey on Context-Aware Multi-Agent Systems: Techniques, Applications, Challenges and Future Directions (2024/2025) — ✅ diganti & terverifikasi 2026-08-13
+- **Lokasi file:** `M17/Context-Awareness in Modern Conversational Agents.pdf` — file lama yang mismatch (isi kriptografi citra medis) sudah dihapus, diganti user dengan file yang benar
+- **Sprint/Modul terkait:** Sprint 11 (M17) — ⭐ Sangat relevan, mengisi gap yang selama ini dicari kategori #14
+- **Ide inti:** Du, Thudumu, Nguyen, Vasa, Mouzakis (Deakin University, arXiv:2402.01968). Survei komprehensif yang menyatukan dua bidang yang biasanya diteliti terpisah — context-awareness dan multi-agent systems (MAS) — jadi satu arsitektur & taksonomi terpadu (Context-Aware Multi-Agent Systems/CA-MAS), diorganisir sekitar 5 kapabilitas agen inti: **Sense → Learn → Reason → Predict → Act**. Perception mencakup sensor visual/auditory/dll; Memory menyimpan state lampau/sekarang/prediksi masa depan (dengan mekanisme experience replay untuk "melupakan" info yang tidak relevan lagi).
+- **Relevansi ke F.R.I.D.A.Y:** Kerangka Sense-Learn-Reason-Predict-Act bisa langsung dipetakan ke pipeline M17: sensor/input rumah (Sense) → update model preferensi user (Learn) → putuskan relevansi situasi (Reason) → prediksi kebutuhan proaktif (Predict) → panggil tool (Act). Berguna sebagai kerangka tingkat-tinggi yang melengkapi paper lain di kategori ini (Inner Thoughts, ContextAgent) yang lebih fokus ke satu bagian pipeline saja.
+- **Sumber informasi:** Ekstraksi mendalam — abstract, intro, dan bagian taksonomi kapabilitas agen dibaca via `pdftotext`, dikonfirmasi cocok dengan judul & arXiv ID
+- **Catatan tambahan:** Ini survei tentang multi-agent systems secara umum (bukan khusus asisten personal/rumah), jadi banyak contoh kasusnya dari domain lain (kendaraan otonom, robotika bawah air) — perlu filter bagian yang relevan ke konteks single-user smart-home F.R.I.D.A.Y.
+
+> **Catatan kategori [2026-08-13]:** File mismatch lama sudah diganti dengan paper survei di atas — kategori #14/M17 sekarang lengkap tanpa file bermasalah tersisa.
 
 ---
 
@@ -783,7 +815,15 @@ Empat paper berikut berulang kali memicu error/safety-filter otomatis saat dibac
 - **Sumber informasi:** Ekstraksi parsial — abstract/intro/kesimpulan, konten dikonfirmasi cocok dengan judul
 - **Catatan tambahan:** Worth direvisit saat menulis system prompt/persona guideline — rujukan menghindari over-anthropomorphizing yang memicu ekspektasi tidak realistis.
 
-> **Catatan kategori:** paper "Form Follows Function: Anthropomorphism in AI-Mediated Interactions" yang seharusnya jadi paper kedua di kategori ini (per `sprint-paper-mapping.md`, kategori #15 dianggap "sudah lengkap ✅") ternyata file-nya **mismatch** (isi sebenarnya paper serangan privasi federated learning) — lihat bagian **File Bermasalah**. Berarti kategori #15 sebenarnya **belum lengkap**, perlu cari ulang paper aslinya.
+### Humanizing Machines: Rethinking LLM Anthropomorphism Through a Multi-Level Framework of Design (2025) — ✅ diganti & terverifikasi 2026-08-13
+- **Lokasi file:** `M15/Form Follows Function Anthropomorphism in AI-Mediated Interactions.pdf` — nama file dipertahankan (warisan), file lama yang mismatch (isi serangan privasi federated learning) sudah dihapus, diganti user dengan file yang benar. **Catatan lokasi:** file sempat salah ditaruh user di `M17/` terlebih dulu, sudah dipindah ke `M15/` di sesi ini karena isinya soal anthropomorphism (Persona), bukan context-awareness.
+- **Sprint/Modul terkait:** Sprint 10 (M15)
+- **Ide inti:** Xiao, Ng, Liu, Diab (Carnegie Mellon University, arXiv:2508.17573). Mengusulkan kerangka anthropomorphism LLM yang bukan cuma soal risiko (over-trust, deception), tapi sebagai **konsep desain** yang bisa disetel sengaja untuk mendukung tujuan pengguna. Interaksi human-AI dipetakan jadi 4 komponen: **Artifacts** (sistem AI-nya sendiri), **Cues** (sinyal perceptual/linguistic/behavioral/cognitive yang membuat sesuatu terasa "manusiawi" — silhouette humanoid, nada simpatik, kata ganti orang pertama), **Designers** (yang menanamkan cue), **Interpreters** (pengguna yang memproyeksikan respons kognitif ke cue tersebut). Anthropomorphism didefinisikan sebagai fenomena resiprokal: designer menanam cue, interpreter memproyeksikan makna manusiawi ke situ.
+- **Relevansi ke F.R.I.D.A.Y:** Kerangka 4 kategori cue (perceptual/linguistic/behavioral/cognitive) langsung actionable untuk desain persona M15 — bisa dipakai sebagai checklist eksplisit saat menentukan seberapa "manusiawi" F.R.I.D.A.Y terdengar (nada bicara = linguistic cue, respon empati = behavioral cue, dst), bukan cuma insting. Melengkapi paper "Exploring Users' Mental Models" yang lebih fokus ke sisi psikologi persepsi pengguna — paper ini menambahkan sisi desain/produksi cue-nya.
+- **Sumber informasi:** Ekstraksi mendalam — abstract, intro, dan bagian kerangka 4-komponen dibaca via `pdftotext`, dikonfirmasi cocok dengan judul & arXiv ID
+- **Catatan tambahan:** Paper eksplisit mengkritik riset anthropomorphism yang selama ini "risk-focused" — relevan sebagai pengingat bahwa tujuan F.R.I.D.A.Y menambahkan cue manusiawi harus jelas (mis. usability/trust), bukan sekadar ikut-ikutan tren, karena cue yang tidak sengaja ("inadvertently built in") bisa memicu ekspektasi tidak realistis.
+
+> **Catatan kategori [2026-08-13]:** File mismatch lama sudah diganti dengan paper di atas — kategori #15/M15 sekarang benar-benar lengkap (2 paper), sesuai status "✅ Punya" yang tadinya keliru diklaim sebelum audit ditemukan mismatch-nya.
 
 ---
 
@@ -836,24 +876,23 @@ Empat paper berikut berulang kali memicu error/safety-filter otomatis saat dibac
 Daftar semua isu integritas file yang ditemukan selama proses ini — file dengan nama yang tidak cocok dengan isinya, file yang gagal dibaca, dan file yang sengaja dilewati. Semua ini butuh tindakan dari user (unduh ulang, rename, atau baca manual) sebelum bisa dipercaya sepenuhnya sebagai referensi riset.
 
 > Kolom "Folder" di bawah sudah mengikuti skema folder baru **M0–M17** (per modul, lihat catatan di bagian atas dokumen). Tiga baris mismatch tanpa kategori jelas (Recent Advances, Voice Assistants in Everyday Life, Building Trust) sengaja **belum dipindah** — masih di folder tematik lama, menunggu paper aslinya ditemukan dulu baru ditentukan modul mana yang cocok.
+>
+> **[2026-08-12] 4 baris DILEWATI dihapus dari tabel ini** — semuanya berhasil dibaca pakai `pdftotext` (lihat entry lengkap masing-masing di kategori #6/M11 di atas). Ternyata bukan masalah konten yang memicu safety-filter, melainkan tool render PDF (`pdftoppm`) yang tidak tersedia — begitu dicoba pakai ekstraksi teks murni, semua terbaca normal tanpa hambatan.
+>
+> **[2026-08-13] 4 baris resolved dihapus dari tabel ini** — M7 (duplikat DS-CNN 2022 dihapus, tidak ada paper terpisah), M14 (AutoAgents diganti file benar), M17 (Context-Awareness diganti file benar), M15 (Form Follows Function diganti file benar, sempat salah taruh di M17 lalu dipindah). Juga 1 baris "Inner Thoughts — Gagal dibaca" dihapus karena sudah terverifikasi penuh sejak 2026-08-12 (tabel ini sempat tidak disinkronkan saat itu). Detail masing-masing ada di entry kategori terkait di atas.
 
 | Folder | Nama File | Masalah |
 |---|---|---|
-| `M7/` | A Depthwise Separable CNN for Keyword Spotting on an Embedded System (**2022**).pdf | **MISMATCH** — isi sebenarnya = "Sub-mW Keyword Spotting on an MCU" (Cerutti et al.), bukan versi 2022 dari paper Sørensen. Rename/ganti file. |
-| `M14/` | AutoAgents A Framework for Automatic Agent Generation (2024).pdf | **MISMATCH** — isi sebenarnya paper fisika kuantum tidak terkait (arXiv:2402.01638). Unduh ulang. |
-| `M17/` | Proactive Conversational Agents with Inner Thoughts (2025).pdf | **Gagal dibaca** — ukuran 22MB > limit, tool render PDF tidak tersedia. Baca manual/compress file. |
 | `Arsitektur & Evaluasi.../` (belum dipindah) | Recent Advances in Conversational AI; A Review of Large Language Models.pdf | **MISMATCH** — isi sebenarnya paper matematika (Willmore energy). Cari ulang paper aslinya — belum jelas modul mana sampai isi aslinya ketemu. |
 | `Arsitektur & Evaluasi.../` (belum dipindah) | Voice Assistants in Everyday Life; An Exploratory Study on User Experience and Trust.pdf | **MISMATCH** — isi sebenarnya paper computer vision (land cover classification). Cari ulang paper aslinya — belum jelas modul mana sampai isi aslinya ketemu. |
 | `Interaksi Manusia-Komputer.../` (belum dipindah) | Building Trust in Human-AI Collaboration; A Survey.pdf | **MISMATCH** — isi sebenarnya paper virtual try-on diffusion model. Cari ulang paper aslinya — belum jelas modul mana sampai isi aslinya ketemu. |
-| `M17/` | Context-Awareness in Modern Conversational Agents and Large Language Models.pdf | **MISMATCH** — isi sebenarnya paper kriptografi citra medis. **Prioritas cari ulang** — topik ini inti untuk M17 (kategori #14). Paper pengganti taruh langsung di folder `M17/` dengan nama file ini (menggantikan). |
-| `M15/` | Form Follows Function Anthropomorphism in AI-Mediated Interactions.pdf | **MISMATCH** — isi sebenarnya paper serangan privasi federated learning. Cari ulang — kategori #15 sempat dianggap "lengkap" di mapping doc, ternyata belum. Paper pengganti taruh langsung di folder `M15/`. |
-| `M11/` | Breaking the Code... Systematic Jailbreaking Attacks (2025).pdf | **DILEWATI** — memicu safety-filter otomatis berulang, tidak dibuka. Baca manual kalau perlu isinya. |
-| `M11/` | Breaking the Protocol... Prompt Injection Vulnerabilities in Tool-Integrated LLM Agents (2026).pdf | **DILEWATI** — sama seperti di atas. Prioritas baca manual karena bahas MCP (relevan M0/M11). |
-| `M11/` | Quantifying Frontier LLM Capabilities for Container Sandbox Escape (2026).pdf | **DILEWATI** — sama seperti di atas. |
-| `M11/` | Optimizing Safety Alignment and Jailbreak Defense for Large Language Models (2025).pdf | **DILEWATI** — sama seperti di atas. |
 | `M11/` | "Not What You've Signed Up For..." (2 file, satu tanpa tahun di nama) | **Duplikat** — konten identik, bukan error. Hapus salah satu kalau mau declutter folder. |
 | `M7/` | "Deep Spoken Keyword Spotting: An Overview" (arXiv 2021 & IEEE Access 2022) | **Duplikat/versi lain** — arXiv preprint vs jurnal resmi, konten sama. Bukan error, tidak perlu tindakan kecuali mau declutter. |
 
-**Total paper diproses:** ~105 file per 2026-08-12 (96 dari sesi awal 2026-08-06 + 9 baru ditambahkan user 2026-08-12 ke `M11/` dan `M17/`, sudah dibaca & dicatat di atas). Semua 16 kategori sudah terisi setidaknya sebagian; kategori #14 (M17) sekarang terisi kuat (5 paper solid termasuk 1 yang berhasil diverifikasi ulang dari status "gagal dibaca"); kategori #15 (M15) masih kekurangan 1 paper karena file mismatch belum diganti.
+**Total paper diproses:** ~108 file per 2026-08-13 (109 per 2026-08-12, dikurangi 2 file duplikat yang dihapus di M7 karena bukan paper terpisah — lihat update di bawah). Dari total ini, **108 sudah punya sumber terverifikasi** (Teks penuh/Ekstraksi mendalam/Ekstraksi parsial) — **0** entry tersisa berstatus "Pengetahuan umum" (AutoAgents sudah diganti file benar). Tersisa 3 file mismatch tanpa kategori jelas (folder tematik lama) yang belum terhitung sebagai entry kategori. Semua 16 kategori sudah terisi kuat dan tidak ada lagi kategori dengan file mismatch yang belum diganti.
 
-**[2026-08-12] Update tambahan:** Struktur folder dirombak dari angka (`1/`-`5/`) + tematik jadi per-modul `M0/`-`M17/` (lihat catatan di bagian atas dokumen). `pdftotext` ternyata tersedia di environment ini — dipakai untuk 9 paper baru + berhasil membuka ulang 1 paper yang sebelumnya berstatus "Gagal dibaca" (Proactive Conversational Agents with Inner Thoughts). Sejumlah entry lama di kategori #7-#12 masih berstatus "Pengetahuan umum" (gagal diekstrak saat sesi awal) — berpotensi bisa diupgrade sekarang pakai `pdftotext`, belum dikerjakan di sesi ini karena di luar scope permintaan (lihat rekomendasi di percakapan).
+**[2026-08-12] Update tambahan:** Struktur folder dirombak dari angka (`1/`-`5/`) + tematik jadi per-modul `M0/`-`M17/` (lihat catatan di bagian atas dokumen). `pdftotext` ternyata tersedia di environment ini — dipakai untuk 9 paper baru + berhasil membuka ulang 1 paper yang sebelumnya berstatus "Gagal dibaca" (Proactive Conversational Agents with Inner Thoughts).
+
+**[2026-08-12] Update tambahan #2 — upgrade massal status sumber:** Ke-11 dari 12 entry lama berstatus "Pengetahuan umum" (kategori #7-#10, ditambah 1 di #13) berhasil diupgrade jadi "Ekstraksi mendalam" pakai `pdftotext` — sekarang cuma tersisa **1** entry "Pengetahuan umum" di seluruh dokumen (AutoAgents, karena file fisiknya memang salah unduh — dikonfirmasi ulang, bukan masalah tool). Ditemukan 1 **koreksi penting**: entry "ASVspoof (2017)" ternyata selama ini salah — deskripsi lama ("replay attack, corpus RedDots") sebenarnya menggambarkan edisi ASVspoof 2017, sedangkan file fisiknya isinya laporan ASVspoof **2015** (fokus TTS/voice-conversion spoofing, bukan replay) — sudah diperbaiki di entry terkait. Juga ditemukan 1 koreksi metodologi: entry "Building Accurate Low Latency ASR" sebelumnya diasumsikan pakai "two-pass decoding", ternyata pakai pendekatan berbeda (hierarchical CTC + joint EOS detection) — sudah diperbaiki.
+
+**[2026-08-13] Update tambahan #3 — 3 file mismatch diganti user, 1 duplikat dibersihkan:** User menambahkan file pengganti untuk M14 (AutoAgents), M17 (Context-Awareness survey), dan M15 (Form Follows Function → ternyata paper "Humanizing Machines" soal anthropomorphism) — ketiganya diverifikasi via `pdftotext` isinya cocok dengan judul, entry lengkap ditulis ulang. File "Form Follows Function" sempat salah ditaruh di folder `M17/`, dipindah ke `M15/` di sesi ini. Untuk M7, user sempat menambahkan file yang diberi nama "(2022)" tapi setelah dicek full-text diff, isinya 100% identik dengan paper Sørensen (2020) yang sudah ada — bukan paper terpisah, jadi file duplikatnya dihapus (2 kali muncul karena delay sinkronisasi OneDrive) dan file mismatch asli (yang isinya Sub-mW) juga dihapus karena kontennya sudah ada dengan nama benar. Kesimpulan: tidak ada paper "DS-CNN Keyword Spotting 2022" yang berdiri sendiri — kategori #7 tetap dianggap lengkap dengan Sørensen (2020).

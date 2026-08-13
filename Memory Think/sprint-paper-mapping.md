@@ -251,7 +251,7 @@ Tiga paper ini dirujuk di banyak modul. Selalu simpan di Project Knowledge:
 
 | Kategori | Nama | Status per 2026-08-12 |
 |---|---|---|
-| **#6** | Security & Permission | ✅ Terisi — 14 paper terbaca (5 di antaranya baru ditambah 2026-08-12) + 4 paper *dilewati* (DILEWATI, masih perlu ditinjau manual, lihat File Bermasalah di `PAPER_NOTES.md`) |
+| **#6** | Security & Permission | ✅ Terisi — 18 paper terbaca (9 di antaranya baru ditambah/dibuka 2026-08-12, termasuk 4 paper yang sebelumnya DILEWATI — semua sudah berhasil dibaca via `pdftotext`) |
 | **#7** | Wake Word | ✅ Terisi — 8 paper |
 | **#8** | Real-Time Speech | ✅ Terisi — 7 paper |
 | **#9** | Speaker Auth | ✅ Terisi — 7 paper |
@@ -260,9 +260,11 @@ Tiga paper ini dirujuk di banyak modul. Selalu simpan di Project Knowledge:
 | **#12** | Cloud-Edge Routing | ✅ Terisi — 6 paper |
 
 **Yang MASIH genuinely butuh tindakan (bukan dari tabel ini, tapi dari audit terpisah):**
-- 4 paper **DILEWATI** di kategori #6 (jailbreak/sandbox-escape) — belum pernah dibaca sama sekali karena memicu safety-filter otomatis berulang saat proses awal. Baca manual kalau perlu isinya (lihat tabel File Bermasalah di `PAPER_NOTES.md`).
 - 3 file **mismatch tanpa kategori jelas** (Recent Advances in Conversational AI, Voice Assistants in Everyday Life, Building Trust in Human-AI Collaboration) — isi filenya salah total, paper aslinya belum ketahuan sama sekali.
-- 1 file **mismatch kategori #15** (Form Follows Function) — masih perlu paper pengganti, belum ditaruh user.
+
+> ~~4 paper DILEWATI di kategori #6~~ — **selesai per 2026-08-12**, semua berhasil dibaca via `pdftotext` (masalah lama ternyata di tool render PDF, bukan konten). Lihat entry lengkap di `PAPER_NOTES.md` kategori #6.
+>
+> ~~1 file mismatch kategori #15 (Form Follows Function)~~ — **selesai per 2026-08-13**, diganti user dengan paper yang benar ("Humanizing Machines", CMU). ~~Mismatch M14 (AutoAgents)~~ dan ~~M17 (Context-Awareness)~~ juga selesai diganti sesi yang sama. Lihat entry lengkap masing-masing di `PAPER_NOTES.md`.
 
 ---
 
