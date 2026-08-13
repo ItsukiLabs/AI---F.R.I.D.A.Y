@@ -214,6 +214,46 @@
   - Commit git untuk semua perubahan `Memory Think/*.md` sesi ini + sesi sebelumnya (2026-08-12) masih menumpuk, belum di-push.
   - M1 (agent loop ReAct) masih belum mulai coding — tetap next step utama untuk kode.
 
+## [2026-08-13] M1 Agent Core — implementasi awal loop ReAct
+
+- **Apa yang dikerjakan:**
+  1. User tanya soal budget $5 credit Anthropic buat development/testing M1 — dijawab pakai harga resmi terbaru (Haiku 4.5 $1/$5 per 1M token, Sonnet 5 $2/$10 intro, Opus 5 $5/$25): estimasi ~550 test run di Haiku, ~275 di Sonnet, ~110 di Opus untuk $5, cukup nyaman untuk beberapa minggu development kalau dominan pakai Haiku. Disepakati model default development = `claude-haiku-4-5`, gampang di-override lewat env var.
+  2. Masuk plan mode untuk desain implementasi M1 sebelum coding — riset struktur `backend/` yang sudah ada (M0 schema, requirements.txt, `.env.example`), keputusan desain kunci: **native tool-calling Claude** (bukan text-parsing manual ala paper ReAct 2022 asli, karena sekarang ada tool-calling API — teks sebelum `tool_use` block = Thought, `tool_use` block = Action, tool result = Observation), validasi input tool pakai library `jsonschema` (bukan hand-rolled), Reflexion di-scope minimal (refleksi cuma hidup dalam satu sesi run, persistensi lintas-sesi itu M2), 1 tool contoh (`get_current_time`, read-only) untuk uji loop end-to-end tanpa butuh IoT/OS (M4/M5) yang belum ada. Plan disetujui user setelah update kecil (tambah `ANTHROPIC_MODEL` default).
+  3. Eksekusi implementasi sesuai plan — lihat daftar file di bawah.
+  4. Jalankan `python -m pytest backend/tests/ -v` — sempat 1 test gagal (`test_invalid_tool_args_trigger_reflection_then_retry`), ternyata bug di test double (`FakeLLMClient` menyimpan referensi list `messages` yang sama, bukan snapshot — karena `run_agent` mutasi list itu dengan `.append()` di setiap iterasi, semua entry `llm.calls` akhirnya menunjuk ke state akhir yang sama). Diperbaiki dengan `list(messages)` (shallow copy) saat mencatat tiap call. Bukan bug di `loop.py` sendiri. Setelah fix: **19/19 test lulus** (11 lama M0 + 8 baru M1).
+- **File yang dibuat/diubah:**
+  - `.env.example`, `.env` — tambah `ANTHROPIC_MODEL=claude-haiku-4-5`.
+  - `requirements.txt` — tambah `anthropic>=0.40,<1`, `python-dotenv>=1.0,<2`, `jsonschema>=4.23,<5` (terinstall ke `.venv`).
+  - `backend/agent_core/__init__.py`, `config.py` — baru.
+  - `backend/agent_core/llm_client.py` — baru: `LLMClient` (Protocol), `ToolCallRequest`/`LLMResponse` (dataclass), `AnthropicLLMClient`, `tool_contract_to_anthropic_tool()`, `get_llm_client()` factory (`"openai"` → `NotImplementedError` disengaja).
+  - `backend/agent_core/tool_registry.py` — baru: `ToolRegistry` (register/get/to_llm_tools).
+  - `backend/agent_core/loop.py` — baru: `run_agent()` — loop ReAct inti dengan validasi jsonschema, reflexion-on-error, guard `max_iterations`.
+  - `backend/agent_core/tools/__init__.py`, `time_tool.py` — baru: tool contoh `get_current_time` + `ALL_TOOLS` registration list.
+  - `backend/agent_core/.gitkeep`, `backend/agent_core/tools/.gitkeep` — dihapus (folder sudah tidak kosong).
+  - `backend/tests/test_tool_registry.py`, `test_agent_loop.py` — baru: 8 test (4 tool_registry, 4 agent_loop pakai `FakeLLMClient`).
+  - `Memory Think/M1_agent_core.md` — status diupdate jadi "Implementasi awal selesai", bagian Ringkasan Teknis ditulis ulang sesuai kode nyata.
+  - `Memory Think/SPRINT1_LOG.md` — entry ini.
+- **Alasan/keputusan:**
+  - `messages: list[dict]` dipakai sebagai format riwayat percakapan bersama (bukan tipe khusus per-provider) — `loop.py` yang merekonstruksi assistant message dari `LLMResponse` (provider-agnostic) balik ke bentuk yang diterima Anthropic API, supaya `LLMClient` interface tetap bersih tanpa bocorin raw SDK objects ke loop.
+  - Tool call gagal (validasi atau exception) selalu ditangkap jadi `tool_result` dengan `is_error: true` dan pesan verbal — tidak pernah membiarkan exception menjalar ke atas loop — supaya prinsip Reflexion (LLM lihat kegagalan, coba lagi dengan info itu) benar-benar terjadi, bukan cuma niat.
+  - Registrasi tool manual eksplisit (`ALL_TOOLS` list), bukan auto-discovery — untuk jumlah tool sekecil ini (1 tool) auto-discovery cuma nambah kompleksitas tanpa manfaat nyata.
+- **Belum dikerjakan / TODO lanjutan:**
+  - Provider `"openai"` di `get_llm_client()` sengaja belum diimplementasi (Sprint 8/M12-M13).
+  - Belum ada tool nyata untuk kontrol IoT/OS (M4/M5 belum digarap) — `get_current_time` cuma contoh minimal untuk uji loop.
+  - Reflexion belum persisten lintas sesi — itu ranah M2 (Memory), belum dimulai.
+  - Perubahan sesi ini **belum di-commit/push** ke git.
+
+## [2026-08-13] Verifikasi smoke test manual M1 dengan API key asli
+
+- **Apa yang dikerjakan:** User mengisi `ANTHROPIC_API_KEY` asli di `.env` (dibuat dari Anthropic Console, key baru). Dijelaskan alur pengambilan key (console.anthropic.com → Settings → API Keys → Create Key) dan bagaimana key itu mengalir ke kode (`.env` → `config.py` baca via `load_dotenv()` → `AnthropicLLMClient` pakai buat inisialisasi SDK `anthropic`). Setelah key terisi, dijalankan smoke test manual: `run_agent("jam berapa sekarang?", registry, get_llm_client("anthropic"))` dengan tool `get_current_time` terdaftar.
+- **Hasil:** **Berhasil** — API call asli ke `claude-haiku-4-5` sukses, model manggil tool `get_current_time` di iterasi 1, jawab final pakai hasilnya di iterasi 2 ("Waktu sekarang adalah 08:42:06 UTC, Kamis 13 Agustus 2026"). `exceeded_max_iterations=False`. Ini pertama kalinya loop M1 diverifikasi jalan end-to-end lewat API asli, bukan cuma lulus test dengan `FakeLLMClient`.
+- **File yang dibuat/diubah:**
+  - `.env` — `ANTHROPIC_API_KEY` diisi user (tidak masuk git, sudah di-`.gitignore`).
+  - `Memory Think/M1_agent_core.md` — tambah catatan "Verifikasi nyata", hapus item TODO smoke test (sudah selesai).
+  - `Memory Think/SPRINT1_LOG.md` — entry ini.
+- **Alasan/keputusan:** Tidak menampilkan isi API key asli di percakapan/log manapun — cukup konfirmasi baris `ANTHROPIC_API_KEY=` terisi via `grep -c`, bukan `cat` isi filenya, supaya key tidak pernah muncul di transcript.
+- **Belum dikerjakan / TODO lanjutan:** Sama seperti entry sebelumnya (provider OpenAI, tool IoT/OS nyata, Reflexion persisten M2) — commit/push sesi ini masih menunggu instruksi user.
+
 ## [2026-08-13] Commit & push paper fixes M7/M14/M15/M17; cari & verifikasi 3 paper pengganti terakhir
 
 - **Apa yang dikerjakan:**

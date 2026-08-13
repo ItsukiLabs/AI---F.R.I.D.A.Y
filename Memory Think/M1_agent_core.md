@@ -1,6 +1,6 @@
 # M1 — Agent Core
 
-> Status: **Belum digarap** (rencana setelah M0 selesai). Sprint 1, Kategori riset #1 (Agentic AI / Tool Use & Function Calling).
+> Status: **Implementasi awal selesai (2026-08-13)** — loop ReAct jalan, 8 test baru lulus (19 total termasuk M0). Sprint 1, Kategori riset #1 (Agentic AI / Tool Use & Function Calling).
 > Paper rujukan: ReAct, Toolformer, Reflexion, LLM Agent Survey. Detail lengkap di `Memory Think/PAPER_NOTES.md`.
 
 ---
@@ -26,14 +26,28 @@ Tiga paper jadi kerangka utama:
 
 Risiko yang harus diantisipasi (dicatat di paper notes): loop ReAct bisa terjebak berulang tanpa progres — perlu guard/timeout/batas iterasi, bukan dibiarkan jalan tanpa henti.
 
-## Ringkasan Teknis (rencana — belum ada kode)
+## Ringkasan Teknis (implementasi nyata, 2026-08-13)
 
-Belum ada implementasi. Rencana kasar berdasarkan riset yang sudah dikumpulkan:
+Keputusan desain kunci: **native tool-calling Claude**, bukan text-parsing manual seperti paper ReAct asli (2022, sebelum tool-calling API ada). Model mengembalikan teks (= Thought) diikuti `tool_use` block terstruktur (= Action) dalam satu response; tool result dikirim balik sebagai pesan berikutnya (= Observation). Sama persis secara semantik dengan pola ReAct, tapi jauh lebih robust dibanding parsing regex teks bebas.
 
-- Loop utama akan hidup di `backend/agent_core/` (folder sudah ada, masih kosong).
-- Tool yang tersedia untuk loop ini diambil dari daftar `ToolContract` (M0) — dipakai sebagai bagian dari prompt/system context supaya LLM tahu tool apa saja yang ada beserta skema input/outputnya.
-- Perlu komponen: (a) pemanggil LLM (thought generation), (b) parser keputusan (apakah LLM mau Action atau langsung jawab final), (c) eksekutor tool sungguhan (validasi input terhadap `input_schema` sebelum dieksekusi), (d) penyisipan observation balik ke konteks percakapan, (e) guard iterasi maksimum supaya tidak infinite loop.
-- Mekanisme refleksi (Reflexion) kemungkinan besar akan menyentuh M2 (Memory) juga — refleksi kegagalan perlu disimpan somewhere, jadi ada overlap desain dengan Sprint 2.
+Struktur file (`backend/agent_core/`):
+
+- `config.py` — baca `.env` (`LLM_PROVIDER`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_MODEL` default `claude-haiku-4-5` untuk development yang murah).
+- `llm_client.py` — `LLMClient` (Protocol provider-agnostic), `ToolCallRequest`/`LLMResponse` (dataclass provider-agnostic), `AnthropicLLMClient` (implementasi nyata pakai SDK `anthropic`), `tool_contract_to_anthropic_tool()` (konversi `ToolContract` M0 → format tool Anthropic, 1:1 karena M0 memang dirancang mengikuti primitif MCP), `get_llm_client(provider)` factory — `"openai"` sengaja `raise NotImplementedError` (slot Sprint 8, bukan dibangun sekarang).
+- `tool_registry.py` — `ToolRegistry`: `register()`, `get()`, `to_llm_tools()`.
+- `loop.py` — `run_agent(user_input, registry, llm, max_iterations=6)`: tiap iterasi kirim riwayat+tools ke LLM → kalau ada tool_calls, validasi argumen ke `input_schema` pakai `jsonschema` → eksekusi tool nyata → exception/validasi gagal jadi **observation refleksi** (`is_error: true`, pesan verbal) disisipkan balik ke riwayat, bukan silent retry → lanjut iterasi. Kalau LLM jawab final (tanpa tool_calls), loop selesai. Guard `max_iterations`: kalau kelewat, `AgentResult.exceeded_max_iterations=True` dengan pesan jujur, bukan infinite loop.
+- `tools/time_tool.py` — satu tool contoh (`get_current_time`, read-only) untuk menguji loop end-to-end secara nyata tanpa butuh integrasi IoT/OS yang belum ada (M4/M5).
+
+**Reflexion di-scope minimal**: refleksi kegagalan cuma hidup di riwayat pesan satu sesi run — persistensi lintas-sesi itu ranah M2 (Memory), belum digarap di sini.
+
+**Test** (`backend/tests/test_tool_registry.py`, `test_agent_loop.py`) — 8 test baru, semua pakai `FakeLLMClient` (test double), tidak ada yang memanggil API Anthropic asli (hindari biaya/flakiness saat CI/dev iteration). Cover: jawaban final tanpa tool, satu tool call sukses, argumen invalid → refleksi → retry sukses, melebihi `max_iterations`.
+
+**Verifikasi nyata (2026-08-13):** smoke test manual dengan `ANTHROPIC_API_KEY` asli user berhasil — `run_agent("jam berapa sekarang?", ...)` memanggil `get_current_time` di iterasi 1, jawab final pakai hasilnya di iterasi 2 ("Waktu sekarang adalah 08:42:06 UTC, Kamis 13 Agustus 2026"). Bukti loop ReAct benar-benar nyambung end-to-end (console API key → `.env` → `config.py` → `AnthropicLLMClient` → `loop.py`), bukan cuma lulus test dengan fake LLM.
+
+**Belum digarap / TODO lanjutan:**
+- Provider `"openai"` belum diimplementasi (sengaja, Sprint 8).
+- Belum ada tool nyata untuk IoT/OS (M4/M5) — `get_current_time` cuma contoh untuk menguji loop.
+- Reflexion belum persisten lintas sesi (M2).
 
 ## Bahasa Awam
 
