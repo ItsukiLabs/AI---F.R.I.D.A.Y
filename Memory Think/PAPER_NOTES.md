@@ -74,6 +74,14 @@
 - **Sumber informasi:** Ekstraksi parsial (mendalam pada bagian tool manifest/schema, sesuai instruksi kritikal untuk M0)
 - **Catatan tambahan:** Perhatikan transport (stdio lokal vs HTTP+SSE remote) sesuai konteks lokal/cloud F.R.I.D.A.Y. Versioning protokol (`protocolVersion`) penting diwaspadai — sejalan dengan konsep versioned contract di Agent-OS.
 
+### A Survey of Large Language Models (2023) — ✅ pengganti file mismatch, terverifikasi 2026-08-13
+- **Lokasi file:** `M1/A Survey of Large Language Models (2023).pdf` — file baru, menggantikan file lama `Recent Advances in Conversational AI; A Review of Large Language Models.pdf` (folder tematik lama, dihapus) yang isinya ternyata mismatch total (paper matematika Willmore energy). Judul aslinya tidak ditemukan; paper ini dipilih sebagai pengganti tematik terdekat setelah pencarian web tidak menemukan paper dengan judul persis file lama.
+- **Sprint/Modul terkait:** Sprint 1 (M0+M1) — rujukan fondasi LLM
+- **Ide inti:** Zhao, Zhou, Li, et al. (Renmin University of China, arXiv:2303.18223 — salah satu survei LLM paling dikutip). Menelusuri evolusi language modeling dari statistical language model → neural language model → pre-trained language model (PLM) → large language model (LLM), menjelaskan bagaimana scaling model PLM (jumlah parameter + data) memunculkan kapabilitas baru ("emergent abilities") yang tidak ada di model lebih kecil. Membahas empat aspek utama LLM: pre-training, adaptation tuning, utilization (prompting), dan evaluasi kapabilitas.
+- **Relevansi ke F.R.I.D.A.Y:** Rujukan fondasi untuk memahami *kenapa* LLM modern (yang jadi otak M1) berperilaku seperti sekarang — konsep emergent abilities relevan untuk ekspektasi realistis kapabilitas model yang dipilih (cloud vs lokal M12/M13), dan bagian prompting/utilization langsung relevan ke desain prompt agent loop M1.
+- **Sumber informasi:** Ekstraksi mendalam — abstract & intro dibaca via `pdftotext`, dikonfirmasi cocok 100% dengan judul, penulis, dan arXiv ID
+- **Catatan tambahan:** Survei sangat luas (banyak revisi, versi terbaru v19 per Maret 2026) — dipakai sebagai peta konsep/rujukan silang, bukan dibaca linear sekali duduk.
+
 ### A Comprehensive Survey of Agents for Computer Use: Foundations, Challenges, and Future Directions (2025)
 - **Lokasi file:** `M6/A Comprehensive Survey of Agents for Computer Use Foundations, Challenges, and Future Directions (2025).pdf`
 - **Sprint/Modul terkait:** Sprint 1 (M0+M1), Sprint 3 (M4/M5)
@@ -823,7 +831,15 @@
 - **Sumber informasi:** Ekstraksi mendalam — abstract, intro, dan bagian kerangka 4-komponen dibaca via `pdftotext`, dikonfirmasi cocok dengan judul & arXiv ID
 - **Catatan tambahan:** Paper eksplisit mengkritik riset anthropomorphism yang selama ini "risk-focused" — relevan sebagai pengingat bahwa tujuan F.R.I.D.A.Y menambahkan cue manusiawi harus jelas (mis. usability/trust), bukan sekadar ikut-ikutan tren, karena cue yang tidak sengaja ("inadvertently built in") bisa memicu ekspektasi tidak realistis.
 
-> **Catatan kategori [2026-08-13]:** File mismatch lama sudah diganti dengan paper di atas — kategori #15/M15 sekarang benar-benar lengkap (2 paper), sesuai status "✅ Punya" yang tadinya keliru diklaim sebelum audit ditemukan mismatch-nya.
+### A Mixed-Methods Approach to Understanding User Trust after Voice Assistant Failures (2023) — ✅ pengganti file mismatch, terverifikasi 2026-08-13
+- **Lokasi file:** `M15/A Mixed-Methods Approach to Understanding User Trust after Voice Assistant Failures (2023).pdf` — file baru, menggantikan file lama `Voice Assistants in Everyday Life; An Exploratory Study on User Experience and Trust.pdf` (folder tematik lama, dihapus) yang isinya ternyata mismatch total (paper computer vision klasifikasi land cover). Judul aslinya tidak ditemukan; paper ini dipilih sebagai pengganti tematik terdekat.
+- **Sprint/Modul terkait:** Sprint 10 (M15)
+- **Ide inti:** Baughan, Mercurio, Liu, Wang, Chen, Ma (University of Washington + Google Research, CHI'23, arXiv:2303.00164). Studi mixed-methods (wawancara + survei) soal bagaimana kegagalan voice assistant memengaruhi trust pengguna. Berkontribusi dataset crowdsourced 199 kegagalan voice assistant, dikategorikan ke 12 sumber kegagalan. Temuan: sebagian jenis kegagalan (misal overcapturing input — asisten menangkap lebih dari yang diucapkan user) merusak trust jauh lebih parah dibanding jenis kegagalan lain.
+- **Relevansi ke F.R.I.D.A.Y:** Taksonomi 12 sumber kegagalan bisa langsung dipakai sebagai checklist desain M15/M8 — tahu kegagalan mana yang paling merusak trust (misal overcapturing) membantu prioritas mana yang harus dicegah lebih ketat (misal endpoint detection M7, confirmation-before-action M11) dibanding yang cukup di-log saja.
+- **Sumber informasi:** Ekstraksi mendalam — abstract & intro dibaca via `pdftotext`, dikonfirmasi cocok 100% dengan judul, penulis, dan arXiv ID
+- **Catatan tambahan:** Data dikumpulkan dari voice assistant komersial umum (Google Assistant, Siri, dll), bukan dari asisten custom seperti F.R.I.D.A.Y — taksonomi kegagalannya portable, tapi frekuensi/skala dampak trust bisa beda di skala personal 1-pengguna.
+
+> **Catatan kategori [2026-08-13]:** File mismatch lama sudah diganti dengan paper di atas — kategori #15/M15 sekarang lengkap dengan 3 paper, sesuai status "✅ Punya" yang tadinya keliru diklaim sebelum audit ditemukan mismatch-nya.
 
 ---
 
@@ -861,6 +877,14 @@
 - **Sumber informasi:** Ekstraksi parsial — abstract/intro/kesimpulan, konten dikonfirmasi cocok dengan judul
 - **Catatan tambahan:** Fokus paper ke hardware/perangkat audio fisik — yang diambil sebaiknya metodologi evaluasinya (AHP), bukan temuan spesifik produknya.
 
+### A Systematic Review on Fostering Appropriate Trust in Human-AI Interaction (2023) — ✅ pengganti file mismatch, terverifikasi 2026-08-13
+- **Lokasi file:** `M16/A Systematic Review on Fostering Appropriate Trust in Human-AI Interaction (2023).pdf` — file baru, menggantikan file lama `Building Trust in Human-AI Collaboration; A Survey.pdf` (folder tematik lama, dihapus) yang isinya ternyata mismatch total (paper virtual try-on diffusion model). Judul aslinya tidak ditemukan; paper ini dipilih sebagai pengganti tematik terdekat.
+- **Sprint/Modul terkait:** Sprint 12 (M16) — juga relevan Sprint 10 (M15, persona/trust)
+- **Ide inti:** Mehrotra, Degachi, Vereschak, Jonker, Tielman (Delft University of Technology, arXiv:2311.06305). Systematic review yang memetakan praktik membangun **appropriate trust** (bukan sekadar "trust setinggi mungkin") pada sistem AI — meninjau pendekatan seperti confidence score, explanation, trustworthiness cue, dan komunikasi uncertainty. Mengidentifikasi jenis task yang dipakai riset trust, cara mengukur trust, dan tantangan utama (kurangnya definisi tunggal "appropriate trust" lintas disiplin).
+- **Relevansi ke F.R.I.D.A.Y:** Kerangka evaluasi trust yang bisa dipakai M16 menyusun metrik "apakah user percaya F.R.I.D.A.Y secara wajar" (bukan over-trust yang berbahaya untuk aksi kritis M11, bukan juga under-trust yang bikin fitur proaktif M17 tidak dipakai). Confidence score/uncertainty communication relevan langsung ke cara F.R.I.D.A.Y menyampaikan keraguan (misal saat tool-call gagal atau ambigu).
+- **Sumber informasi:** Ekstraksi mendalam — abstract & intro dibaca via `pdftotext`, dikonfirmasi cocok 100% dengan judul, penulis, dan arXiv ID
+- **Catatan tambahan:** Fokus review ke *taksonomi pendekatan* (bukan resep implementasi tunggal) — perlu dikombinasikan dengan paper trust-spesifik lain (mis. "A Mixed-Methods Approach... Voice Assistant Failures" di M15) untuk actionable ke domain voice assistant.
+
 ### OSWorld 2.0: Benchmarking Computer Use Agents on Long-Horizon Real-World Tasks (2026)
 - **Lokasi file:** `M6/OSWorld 2.0 Benchmarking Computer Use Agents on Long-Horizon Real-World Tasks (2026).pdf`
 - **Sprint/Modul terkait:** Sprint 4 (M11, safety analysis); evaluasi umum lintas roadmap; dipakai lagi di Sprint 12
@@ -875,21 +899,20 @@
 
 Daftar semua isu integritas file yang ditemukan selama proses ini — file dengan nama yang tidak cocok dengan isinya, file yang gagal dibaca, dan file yang sengaja dilewati. Semua ini butuh tindakan dari user (unduh ulang, rename, atau baca manual) sebelum bisa dipercaya sepenuhnya sebagai referensi riset.
 
-> Kolom "Folder" di bawah sudah mengikuti skema folder baru **M0–M17** (per modul, lihat catatan di bagian atas dokumen). Tiga baris mismatch tanpa kategori jelas (Recent Advances, Voice Assistants in Everyday Life, Building Trust) sengaja **belum dipindah** — masih di folder tematik lama, menunggu paper aslinya ditemukan dulu baru ditentukan modul mana yang cocok.
->
 > **[2026-08-12] 4 baris DILEWATI dihapus dari tabel ini** — semuanya berhasil dibaca pakai `pdftotext` (lihat entry lengkap masing-masing di kategori #6/M11 di atas). Ternyata bukan masalah konten yang memicu safety-filter, melainkan tool render PDF (`pdftoppm`) yang tidak tersedia — begitu dicoba pakai ekstraksi teks murni, semua terbaca normal tanpa hambatan.
 >
 > **[2026-08-13] 4 baris resolved dihapus dari tabel ini** — M7 (duplikat DS-CNN 2022 dihapus, tidak ada paper terpisah), M14 (AutoAgents diganti file benar), M17 (Context-Awareness diganti file benar), M15 (Form Follows Function diganti file benar, sempat salah taruh di M17 lalu dipindah). Juga 1 baris "Inner Thoughts — Gagal dibaca" dihapus karena sudah terverifikasi penuh sejak 2026-08-12 (tabel ini sempat tidak disinkronkan saat itu). Detail masing-masing ada di entry kategori terkait di atas.
+>
+> **[2026-08-13] Update kedua — 3 baris terakhir mismatch selesai, 2 folder tematik lama dihapus:** Pencarian judul persis "Recent Advances in Conversational AI", "Voice Assistants in Everyday Life", dan "Building Trust in Human-AI Collaboration" di web tidak menemukan paper aslinya (kemungkinan judul itu memang bukan judul asli paper, melainkan parafrase/ringkasan dari daftar bacaan lama). Diputuskan pakai paper pengganti tematik terdekat (dicari & diverifikasi isinya via `pdftotext`): "A Survey of Large Language Models" (arXiv:2303.18223) → dipindah ke `M1/`, "A Mixed-Methods Approach to Understanding User Trust after Voice Assistant Failures" (arXiv:2303.00164) → dipindah ke `M15/`, "A Systematic Review on Fostering Appropriate Trust in Human-AI Interaction" (arXiv:2311.06305) → dipindah ke `M16/`. Ketiga file mismatch lama dihapus. Folder `Arsitektur & Evaluasi Sistem Asisten AI (Teknik & Komputasi)/` dan `Interaksi Manusia-Komputer & Psikologi AI (Human-Computer Interaction)/` sudah kosong sepenuhnya, ikut dihapus — migrasi ke skema M0-M17 sekarang genap 100% (kecuali folder `1/Nggak dulu/` yang memang sengaja dikecualikan sejak awal).
 
 | Folder | Nama File | Masalah |
 |---|---|---|
-| `Arsitektur & Evaluasi.../` (belum dipindah) | Recent Advances in Conversational AI; A Review of Large Language Models.pdf | **MISMATCH** — isi sebenarnya paper matematika (Willmore energy). Cari ulang paper aslinya — belum jelas modul mana sampai isi aslinya ketemu. |
-| `Arsitektur & Evaluasi.../` (belum dipindah) | Voice Assistants in Everyday Life; An Exploratory Study on User Experience and Trust.pdf | **MISMATCH** — isi sebenarnya paper computer vision (land cover classification). Cari ulang paper aslinya — belum jelas modul mana sampai isi aslinya ketemu. |
-| `Interaksi Manusia-Komputer.../` (belum dipindah) | Building Trust in Human-AI Collaboration; A Survey.pdf | **MISMATCH** — isi sebenarnya paper virtual try-on diffusion model. Cari ulang paper aslinya — belum jelas modul mana sampai isi aslinya ketemu. |
 | `M11/` | "Not What You've Signed Up For..." (2 file, satu tanpa tahun di nama) | **Duplikat** — konten identik, bukan error. Hapus salah satu kalau mau declutter folder. |
 | `M7/` | "Deep Spoken Keyword Spotting: An Overview" (arXiv 2021 & IEEE Access 2022) | **Duplikat/versi lain** — arXiv preprint vs jurnal resmi, konten sama. Bukan error, tidak perlu tindakan kecuali mau declutter. |
 
-**Total paper diproses:** ~108 file per 2026-08-13 (109 per 2026-08-12, dikurangi 2 file duplikat yang dihapus di M7 karena bukan paper terpisah — lihat update di bawah). Dari total ini, **108 sudah punya sumber terverifikasi** (Teks penuh/Ekstraksi mendalam/Ekstraksi parsial) — **0** entry tersisa berstatus "Pengetahuan umum" (AutoAgents sudah diganti file benar). Tersisa 3 file mismatch tanpa kategori jelas (folder tematik lama) yang belum terhitung sebagai entry kategori. Semua 16 kategori sudah terisi kuat dan tidak ada lagi kategori dengan file mismatch yang belum diganti.
+Tidak ada lagi file mismatch tersisa di seluruh koleksi. 2 baris di atas murni duplikat/versi-lain yang isinya identik, bukan masalah integritas.
+
+**Total paper diproses:** ~108 file per 2026-08-13 (109 per 2026-08-12, dikurangi 2 duplikat DS-CNN 2022 yang dihapus di M7, ditambah net 0 dari penggantian 3 file mismatch terakhir — 3 lama dihapus, 3 baru masuk). Dari total ini, **108 sudah punya sumber terverifikasi** (Teks penuh/Ekstraksi mendalam/Ekstraksi parsial) — **0** entry berstatus "Pengetahuan umum", dan **0** file mismatch tersisa di seluruh koleksi. Semua 16 kategori sudah terisi kuat. Migrasi ke skema folder per-modul `M0`-`M17` sudah genap 100% (2 folder tematik lama terakhir sudah dihapus karena kosong) — hanya folder `1/Nggak dulu/` yang tersisa di luar skema, sengaja dikecualikan sejak awal.
 
 **[2026-08-12] Update tambahan:** Struktur folder dirombak dari angka (`1/`-`5/`) + tematik jadi per-modul `M0/`-`M17/` (lihat catatan di bagian atas dokumen). `pdftotext` ternyata tersedia di environment ini — dipakai untuk 9 paper baru + berhasil membuka ulang 1 paper yang sebelumnya berstatus "Gagal dibaca" (Proactive Conversational Agents with Inner Thoughts).
 

@@ -259,12 +259,13 @@ Tiga paper ini dirujuk di banyak modul. Selalu simpan di Project Knowledge:
 | **#11** | Local Inference | ✅ Terisi — 6 paper |
 | **#12** | Cloud-Edge Routing | ✅ Terisi — 6 paper |
 
-**Yang MASIH genuinely butuh tindakan (bukan dari tabel ini, tapi dari audit terpisah):**
-- 3 file **mismatch tanpa kategori jelas** (Recent Advances in Conversational AI, Voice Assistants in Everyday Life, Building Trust in Human-AI Collaboration) — isi filenya salah total, paper aslinya belum ketahuan sama sekali.
+**Status per 2026-08-13: tidak ada lagi file mismatch tersisa di seluruh koleksi paper.** Semua yang tercatat di bawah ini sudah selesai.
 
 > ~~4 paper DILEWATI di kategori #6~~ — **selesai per 2026-08-12**, semua berhasil dibaca via `pdftotext` (masalah lama ternyata di tool render PDF, bukan konten). Lihat entry lengkap di `PAPER_NOTES.md` kategori #6.
 >
 > ~~1 file mismatch kategori #15 (Form Follows Function)~~ — **selesai per 2026-08-13**, diganti user dengan paper yang benar ("Humanizing Machines", CMU). ~~Mismatch M14 (AutoAgents)~~ dan ~~M17 (Context-Awareness)~~ juga selesai diganti sesi yang sama. Lihat entry lengkap masing-masing di `PAPER_NOTES.md`.
+>
+> ~~3 file mismatch tanpa kategori jelas (Recent Advances in Conversational AI, Voice Assistants in Everyday Life, Building Trust in Human-AI Collaboration)~~ — **selesai per 2026-08-13**. Judul asli tidak ditemukan lewat pencarian web, jadi diganti pakai paper pengganti tematik terdekat: "A Survey of Large Language Models" (M1), "A Mixed-Methods Approach to Understanding User Trust after Voice Assistant Failures" (M15), "A Systematic Review on Fostering Appropriate Trust in Human-AI Interaction" (M16). 2 folder tematik lama yang jadi kosong ikut dihapus.
 
 ---
 

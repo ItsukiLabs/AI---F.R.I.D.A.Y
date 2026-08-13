@@ -213,3 +213,27 @@
   - 3 file mismatch tanpa kategori jelas (Recent Advances, Voice Assistants in Everyday Life, Building Trust) masih menunggu paper pengganti — belum ada progres dari user untuk ini.
   - Commit git untuk semua perubahan `Memory Think/*.md` sesi ini + sesi sebelumnya (2026-08-12) masih menumpuk, belum di-push.
   - M1 (agent loop ReAct) masih belum mulai coding — tetap next step utama untuk kode.
+
+## [2026-08-13] Commit & push paper fixes M7/M14/M15/M17; cari & verifikasi 3 paper pengganti terakhir
+
+- **Apa yang dikerjakan:**
+  1. Commit git untuk semua perubahan sesi ini (hapus/pindah file paper M7/M14/M15/M17 + update `PAPER_NOTES.md`/`sprint-paper-mapping.md`/`SPRINT1_LOG.md`) sebagai satu unit kerja logis, langsung di-push ke `origin/master` (`4c452f5..0c05301`).
+  2. User tanya detail 3 file mismatch tanpa kategori jelas yang masih PR (folder mana, isi apa, kenapa mismatch) — dijelaskan satu-satu: 2 file di `Arsitektur & Evaluasi Sistem Asisten AI (Teknik & Komputasi)/` (Recent Advances in Conversational AI → isi asli paper matematika Willmore energy; Voice Assistants in Everyday Life → isi asli paper computer vision land cover classification), 1 file di `Interaksi Manusia-Komputer & Psikologi AI (Human-Computer Interaction)/` (Building Trust in Human-AI Collaboration → isi asli paper virtual try-on diffusion model).
+  3. User minta bantuan cari kandidat pengganti. Dicoba `WebSearch` judul persis ketiga file — **tidak ditemukan paper dengan judul itu di manapun**, mengonfirmasi dugaan bahwa judul-judul itu bukan judul paper asli persis (kemungkinan parafrase dari daftar bacaan lama). Diputuskan cari paper pengganti tematik terdekat: "A Survey of Large Language Models" (Zhao et al., arXiv:2303.18223), "A Mixed-Methods Approach to Understanding User Trust after Voice Assistant Failures" (Baughan et al., CHI'23, arXiv:2303.00164), "A Systematic Review on Fostering Appropriate Trust in Human-AI Interaction" (Mehrotra et al., arXiv:2311.06305).
+  4. User mengunduh & menaruh ketiga kandidat di folder tematik lama (nama file asli dari judul paper, bukan menimpa nama file lama). Diverifikasi isi via `pdftotext` — ketiganya cocok 100% dengan judul/penulis/arXiv ID yang diharapkan.
+  5. Ditentukan modul tujuan berdasarkan isi (bukan cuma ikut nama folder lama): Survey of LLM → `M1/` (fondasi agent core, kategori #1), Mixed-Methods Trust → `M15/` (persona/trust voice assistant, kategori #15, melengkapi paper trust yang sudah ada di sana), Systematic Review Trust → `M16/` (evaluasi/benchmarking, kategori #16, karena isinya taksonomi metode pengukuran trust bukan studi UX spesifik voice assistant).
+  6. Eksekusi file: pindahkan 3 file baru ke folder M yang ditentukan (rename tambah tahun biar konsisten pola penamaan), hapus 3 file mismatch lama, folder `Arsitektur & Evaluasi.../` dan `Interaksi Manusia-Komputer.../` jadi kosong total → dihapus (migrasi ke skema `M0`-`M17` sekarang 100%, kecuali `1/Nggak dulu/` yang memang sengaja dikecualikan).
+  7. Update `PAPER_NOTES.md`: 3 entry baru ditulis lengkap (kategori #1/#15/#16), tabel "File Bermasalah" dikosongkan dari baris mismatch (tersisa cuma 2 baris duplikat/versi-lain yang bukan masalah), ringkasan total diupdate jadi "0 mismatch tersisa, migrasi folder 100%".
+  8. Update `sprint-paper-mapping.md`: TODO section diganti jadi "status selesai semua", 3 mismatch terakhir ditandai selesai dengan detail pengganti.
+- **File yang dibuat/diubah:**
+  - `Paper & Journal/F.R.I.D.A.Y/M1/A Survey of Large Language Models (2023).pdf`, `M15/A Mixed-Methods Approach to Understanding User Trust after Voice Assistant Failures (2023).pdf`, `M16/A Systematic Review on Fostering Appropriate Trust in Human-AI Interaction (2023).pdf` — baru (dipindah dari folder tematik lama).
+  - `Paper & Journal/F.R.I.D.A.Y/Arsitektur & Evaluasi Sistem Asisten AI (Teknik & Komputasi)/`, `Interaksi Manusia-Komputer & Psikologi AI (Human-Computer Interaction)/` — dihapus (kosong).
+  - `Memory Think/PAPER_NOTES.md` — 3 entry baru, tabel File Bermasalah & ringkasan diupdate.
+  - `Memory Think/sprint-paper-mapping.md` — TODO section diupdate jadi selesai semua.
+  - `Memory Think/SPRINT1_LOG.md` — entry ini.
+- **Alasan/keputusan:**
+  - Modul tujuan ditentukan dari isi paper yang sebenarnya, bukan otomatis ikut nama folder tematik lamanya — supaya konsisten dengan prinsip "1 paper = 1 folder modul utama" yang dipakai sejak rombak folder 2026-08-12.
+  - Nama file baru ditambah "(2023)" mengikuti pola penamaan file lain di folder yang sama (tahun publikasi di akhir nama), bukan dipertahankan sama seperti nama file lama yang mismatch — beda dengan kasus M15 sebelumnya (Form Follows Function) yang nama filenya sengaja dipertahankan karena warisan; di sini tidak ada alasan mempertahankan nama lama karena filenya benar-benar baru dan berbeda topiknya dari nama file mismatch sebelumnya.
+- **Belum dikerjakan / TODO lanjutan:**
+  - Perubahan sesi ini **belum di-commit/push** — menunggu instruksi user.
+  - M1 (agent loop ReAct) masih belum mulai coding — tetap next step utama untuk kode. Seluruh backlog riset paper sekarang sudah tuntas (0 mismatch tersisa), jadi tidak ada lagi alasan menunda mulai coding M1.
