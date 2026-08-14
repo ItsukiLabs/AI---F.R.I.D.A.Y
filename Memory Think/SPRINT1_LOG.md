@@ -277,3 +277,14 @@
 - **Belum dikerjakan / TODO lanjutan:**
   - Perubahan sesi ini **belum di-commit/push** — menunggu instruksi user.
   - M1 (agent loop ReAct) masih belum mulai coding — tetap next step utama untuk kode. Seluruh backlog riset paper sekarang sudah tuntas (0 mismatch tersisa), jadi tidak ada lagi alasan menunda mulai coding M1.
+
+## [2026-08-13] Penutup hari: rekap status commit/push + koreksi 2 TODO basi
+
+- **Apa yang dikerjakan:** User tanya apakah seluruh hasil kerja hari ini sudah tercatat. Dicek ulang urutan kronologis vs urutan entry di file ini (`grep` commit hash) — ketemu **2 baris TODO yang sudah basi**: entry "M1 Agent Core" (di atas, TODO poin terakhir) dan entry "Commit & push paper fixes..." (TODO di atasnya) sama-sama bilang "belum di-commit/push", padahal keduanya **sudah** di-push di turn-turn setelahnya. Entry lama sengaja tidak diedit langsung (konvensi append-only project ini — riwayat harus tetap utuh), jadi dikoreksi lewat entry penutup ini.
+- **Rekap status commit/push hari ini (2026-08-13), urut kronologis nyata:**
+  1. `0c05301` — fix M7/M14/M15/M17 mismatch pertama (dicatat entry "Verifikasi & perbaikan file paper pengganti..." di atas)
+  2. `552496e` — fix 3 mismatch terakhir + migrasi folder 100% (dicatat entry "Commit & push paper fixes..." di atas — TODO "belum di-commit"-nya sudah tidak berlaku, sudah di-push sebagai commit ini)
+  3. `f12d10a` — implementasi M1 Agent Core lengkap (dicatat entry "M1 Agent Core — implementasi awal loop ReAct" di atas — TODO "belum di-commit/push"-nya juga sudah tidak berlaku, sudah di-push sebagai commit ini)
+- **File yang dibuat/diubah:** `Memory Think/SPRINT1_LOG.md` — entry ini saja (tidak ada perubahan kode/paper baru).
+- **Alasan/keputusan:** Catatan chronological order di file ini sempat tidak pas dengan urutan waktu tulis sebenarnya (entry "Commit & push paper fixes..." ditulis sebelum entry M1, tapi posisinya di file muncul setelah) — bukan salah data, cuma urutan append yang meleset satu langkah. Diputuskan tidak reorder entry lama (berisiko dianggap mengubah riwayat), cukup diberi rekap eksplisit di sini supaya pembaca berikutnya tidak salah asumsi urutan kejadian.
+- **Belum dikerjakan / TODO lanjutan:** Tidak ada tambahan baru — semua pekerjaan hari ini (paper fixes 2x commit + M1 implementation) sudah ter-push ke `origin/master`. Next step: mulai Sprint 2 (M2 Memory) atau perkuat M1 (tool IoT/OS nyata nunggu M4/M5, Reflexion persisten nunggu M2) — keputusan di tangan user.
