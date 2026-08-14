@@ -59,6 +59,18 @@ def test_compact_returns_false_when_history_too_short_to_cut_safely():
     assert len(llm.calls) == 0
 
 
+def test_compact_on_empty_messages_is_a_safe_no_op():
+    session = Session.new("s1")
+    llm = FakeLLMClient([])
+
+    changed = compact(session, llm, keep_recent_messages=4)
+
+    assert changed is False
+    assert session.messages == []
+    assert session.compaction_count == 0
+    assert len(llm.calls) == 0
+
+
 def test_compact_never_splits_a_tool_use_tool_result_pair():
     session = Session.new("s1")
     session.messages = [

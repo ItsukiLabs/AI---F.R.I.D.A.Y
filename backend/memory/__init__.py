@@ -7,7 +7,16 @@ Import it directly: ``from backend.memory.runner import run_with_memory``.
 """
 
 from backend.memory.compaction import compact
+from backend.memory.errors import SessionError, SessionLoadError, SessionSaveError, UnsupportedSessionSchemaError
 from backend.memory.session import Session
 from backend.memory.store import SessionStore
 
-__all__ = ["Session", "SessionStore", "compact"]
+__all__ = [
+    "Session",
+    "SessionStore",
+    "SessionError",
+    "SessionLoadError",
+    "SessionSaveError",
+    "UnsupportedSessionSchemaError",
+    "compact",
+]

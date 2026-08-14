@@ -47,6 +47,27 @@ def test_needs_compaction_safety_margin_not_enough_is_still_false():
     assert session.needs_compaction(threshold_tokens=6000, safety_margin_tokens=200) is False
 
 
+def test_needs_compaction_safety_margin_exact_boundary_just_under_is_false():
+    session = Session.new("s1")
+    session.last_input_tokens = 5499
+
+    assert session.needs_compaction(threshold_tokens=6000, safety_margin_tokens=500) is False
+
+
+def test_needs_compaction_safety_margin_exact_boundary_is_true():
+    session = Session.new("s1")
+    session.last_input_tokens = 5500
+
+    assert session.needs_compaction(threshold_tokens=6000, safety_margin_tokens=500) is True
+
+
+def test_needs_compaction_safety_margin_already_at_threshold_is_true():
+    session = Session.new("s1")
+    session.last_input_tokens = 6000
+
+    assert session.needs_compaction(threshold_tokens=6000, safety_margin_tokens=500) is True
+
+
 def test_needs_compaction_with_no_usage_recorded_yet_is_false():
     session = Session.new("s1")
 
@@ -75,6 +96,23 @@ def test_to_llm_messages_without_summary_returns_messages_unchanged():
     session.messages = [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "yo"}]
 
     assert session.to_llm_messages() == session.messages
+
+
+def test_to_llm_messages_with_empty_history_and_no_summary_returns_empty_list():
+    session = Session.new("s1")
+
+    assert session.to_llm_messages() == []
+
+
+def test_to_llm_messages_with_empty_history_and_a_summary_returns_just_the_summary_turns():
+    session = Session.new("s1")
+    session.summary = "Nothing recent, but earlier the user asked about the weather."
+
+    result = session.to_llm_messages()
+
+    assert len(result) == 2
+    assert result[0]["role"] == "user"
+    assert result[1]["role"] == "assistant"
 
 
 def test_to_llm_messages_with_summary_places_it_first_then_ack_then_recent_verbatim():
