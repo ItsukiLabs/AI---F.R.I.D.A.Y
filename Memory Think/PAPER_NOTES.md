@@ -142,6 +142,78 @@
 - **Sumber informasi:** Ekstraksi parsial — abstract/intro/kesimpulan via pdftotext
 - **Catatan tambahan:** Tabel metode sangat padat (>100 metode) — cukup dipakai sebagai indeks untuk deep-dive nanti.
 
+### A Survey on the Memory Mechanism of Large Language Model based Agents (2024)
+- **Lokasi file:** `M2/A Survey on the Memory Mechanism of Large Language Model based Agents — Zhang et al. (2024).pdf`
+- **Sprint/Modul terkait:** Sprint 2 (M2) — peta rujukan silang untuk M2a/M2b/M2c
+- **Ide inti:** Survei sistematis (arXiv:2404.13501, Renmin University + Huawei Noah's Ark Lab) yang menjawab "apa itu" dan "kenapa perlu" memori pada agent berbasis LLM, lalu mengorganisir desain & evaluasi modul memori dari berbagai paper yang selama ini tersebar, plus contoh aplikasi nyata.
+- **Relevansi ke F.R.I.D.A.Y:** Indeks/peta tingkat tinggi untuk menyusun taksonomi M2 sendiri (apa saja jenis memori, bagaimana mengevaluasinya) sebelum menyelam ke paper teknis spesifik (MemGPT, MemoryBank, A-MEM) — dipakai sebagai kerangka pembanding, bukan blueprint implementasi langsung.
+- **Sumber informasi:** Ekstraksi parsial — abstract via pdftotext
+- **Catatan tambahan:** Ditambahkan user 2026-08-14 sebagai bagian riset gap forgetting/consolidation untuk M2c.
+
+### A-Mem: Agentic Memory for LLM Agents (2025)
+- **Lokasi file:** `M2/A-MEM Agentic Memory for LLM Agents — Xu et al. (2025).pdf`
+- **Sprint/Modul terkait:** Sprint 2 (M2b/M2c)
+- **Ide inti:** arXiv:2502.12110 (Rutgers/AIOS Foundation). Sistem memori yang mengorganisir dirinya sendiri secara dinamis ala metode Zettelkasten — tiap memori baru dicatat dengan atribut terstruktur (deskripsi kontekstual, keyword, tag), lalu sistem otomatis mencari koneksi ke memori lama dan membentuk link kalau ada kemiripan bermakna. Memori lama bisa ikut ter-update representasinya saat memori baru masuk ("memory evolution").
+- **Relevansi ke F.R.I.D.A.Y:** Alternatif/pelengkap MemGPT untuk M2b — bukan cuma paging in/out, tapi jaringan memori yang saling terhubung dan berevolusi, relevan kalau F.R.I.D.A.Y perlu mengaitkan preferensi/insight user lintas topik (mis. kebiasaan IoT + gaya komunikasi user jadi satu insight gabungan).
+- **Sumber informasi:** Ekstraksi parsial — abstract via pdftotext
+- **Catatan tambahan:** Ditambahkan user 2026-08-14. Ketergantungan pada kualitas graph-linking otomatis — perlu dicek robustness-nya kalau volume memori besar.
+
+### FSFM: A Biologically-Inspired Framework for Selective Forgetting of Agent Memory (2026)
+- **Lokasi file:** `M2/FSFM A Biologically-Inspired Framework for Selective Forgetting of Agent Memory (2026).pdf`
+- **Sprint/Modul terkait:** Sprint 2 (M2c) — ⭐ Langsung menjawab gap forgetting/consolidation
+- **Ide inti:** arXiv:2604.20300 (China Mobile). Berargumen bahwa forgetting yang dirancang baik sama pentingnya dengan retensi memori untuk performa optimal, lewat 3 dimensi: efisiensi komputasi/storage (pruning cerdas), kualitas memori (update preferensi/konteks usang), dan postur keamanan. Mengambil analogi langsung dari hippocampal memory indexing/consolidation theory dan kurva lupa Ebbinghaus.
+- **Relevansi ke F.R.I.D.A.Y:** Kandidat kerangka utama untuk kebijakan eviction/forgetting di M2c — melengkapi MemGPT yang fokus ke mekanisme paging tapi tidak spesifik soal kapan/bagaimana memori lama sebaiknya "dihapus/dilupakan" secara berprinsip. Poin keamanan (forgetting sebagai bagian postur security) relevan juga untuk M11.
+- **Sumber informasi:** Ekstraksi parsial — abstract via pdftotext
+- **Catatan tambahan:** Ditambahkan user 2026-08-14. Paper baru/niche (April 2026, belum banyak sitasi) — treat sebagai ide awal yang perlu divalidasi lebih jauh, bukan standar yang sudah mapan.
+
+### MemoryBank: Enhancing Large Language Models with Long-Term Memory (2023 / AAAI 2024)
+- **Lokasi file:** `M2/MemoryBank Enhancing Large Language Models with Long-Term Memory — Zhong et al. (2023AAAI 2024).pdf`
+- **Sprint/Modul terkait:** Sprint 2 (M2c) — ⭐ Langsung menjawab gap forgetting/consolidation
+- **Ide inti:** arXiv:2305.10250 (Sun Yat-Sen University dkk). Mekanisme memori yang bisa memanggil kembali memori relevan, terus berevolusi lewat update berkelanjutan, dan memahami kepribadian user seiring waktu. Kunci utamanya: mekanisme update memori terinspirasi **kurva lupa Ebbinghaus** — AI melupakan/menguatkan memori berdasarkan waktu berlalu dan relevansi, mirip perilaku manusia.
+- **Relevansi ke F.R.I.D.A.Y:** Paper paling konkret untuk mengisi gap forgetting di M2c — kurva Ebbinghaus bisa langsung jadi formula scoring "kapan memori didowngrade/dihapus" yang dipasangkan dengan hierarki paging MemGPT. Use-case yang disebut (personal companion, secretarial assistance) sangat dekat dengan visi F.R.I.D.A.Y.
+- **Sumber informasi:** Ekstraksi parsial — abstract via pdftotext
+- **Catatan tambahan:** Ditambahkan user 2026-08-14, menjawab langsung rekomendasi yang muncul dari diskusi kecukupan paper M2. Cek juga implementasi open-source resminya kalau ada saat mulai coding M2c.
+
+### Recursively Summarizing Enables Long-Term Dialogue Memory in Large Language Models (2023)
+- **Lokasi file:** `M2/Recursively Summarizing Enables Long-Term Dialogue Memory in Large Language Models — Wang et al. (2023).pdf`
+- **Sprint/Modul terkait:** Sprint 2 (M2a/M2b)
+- **Ide inti:** arXiv:2308.15022 (HKUST dkk). LLM distimulasi untuk mengingat potongan dialog kecil, lalu secara rekursif menghasilkan memori/summary baru dari memori lama + konteks berikutnya, dan respons akhir dibentuk berdasarkan memori terbaru (bukan seluruh histori mentah).
+- **Relevansi ke F.R.I.D.A.Y:** Teknik konkret untuk M2a — kompresi konteks percakapan panjang jadi summary bertingkat, alternatif ringan dibanding menyimpan seluruh histori mentah di working context, mengurangi risiko "Lost in the Middle" karena konteks yang dikirim ke LLM sudah dipadatkan.
+- **Sumber informasi:** Ekstraksi parsial — abstract via pdftotext
+- **Catatan tambahan:** Ditambahkan user 2026-08-14. **Koreksi atribusi:** nama file awal saat diunggah tertulis "Qian et al." tapi daftar penulis asli di dalam PDF adalah Wang, Fu, Cao, Wang, Tian, Ding (tidak ada nama Qian) — nama file sudah diperbaiki jadi "Wang et al." saat verifikasi 2026-08-14, judul & isi 100% cocok.
+
+### Learning Offline: Memory Replay in Biological and Artificial Reinforcement Learning (2021)
+- **Lokasi file:** `M2/Learning Offline Memory Replay in Biological and Artificial Reinforcement Learning — Roscow, Chua, Costa, Jones & Lepora (2021), Trends in Neurosciences.pdf`
+- **Sprint/Modul terkait:** Sprint 2 (M2c) — analogi biologis untuk consolidation
+- **Ide inti:** arXiv:2109.10034, *Trends in Neurosciences*. Membahas bagaimana replay neuronal di otak (memutar ulang pengalaman lama secara offline) penting untuk konsolidasi memori dan proses kognitif lain (planning, generalisasi), dan bagaimana prinsip ini menginspirasi experience replay pada reinforcement learning buatan.
+- **Relevansi ke F.R.I.D.A.Y:** Analogi biologis untuk desain "consolidation job" M2c — proses background yang mengulang/menyaring interaksi lama secara periodik jadi insight yang lebih padat (mirip reflection di Generative Agents), bukan cuma menyimpan mentah lalu retrieval saat butuh.
+- **Sumber informasi:** Ekstraksi parsial — highlights/intro via pdftotext
+- **Catatan tambahan:** Ditambahkan user 2026-08-14. Paper neurosains/RL murni, bukan LLM — perlu adaptasi konsep, bukan diadopsi teknis langsung.
+
+### Overcoming Catastrophic Forgetting in Neural Networks — EWC (2017)
+- **Lokasi file:** `M2/Overcoming Catastrophic Forgetting in Neural Networks (EWC) — Kirkpatrick et al. (2017), PNAS.pdf`
+- **Sprint/Modul terkait:** Sprint 2 (M2c) — analogi biologis untuk consolidation
+- **Ide inti:** arXiv:1612.00796, *PNAS* (DeepMind). Elastic Weight Consolidation (EWC): mencegah neural network "lupa total" tugas lama saat belajar tugas baru dengan memperlambat perubahan bobot yang penting untuk tugas lama, terinspirasi teori system-level consolidation McClelland et al. (1995).
+- **Relevansi ke F.R.I.D.A.Y:** Bukan teknik langsung dipakai (ini soal update bobot neural net, F.R.I.D.A.Y tidak fine-tuning model dasarnya), tapi prinsip "importance-weighted retention" relevan sebagai analogi: memori/preferensi user yang sering dipakai/penting sebaiknya lebih tahan terhadap forgetting dibanding yang jarang dipakai — bisa jadi salah satu faktor scoring di M2c.
+- **Sumber informasi:** Ekstraksi parsial — bagian intro via pdftotext
+- **Catatan tambahan:** Ditambahkan user 2026-08-14. Paper machine learning klasik (bukan LLM/agent) — konteksnya continual learning pada neural net, adaptasi ke M2 murni konseptual/analogi.
+
+### Why There Are Complementary Learning Systems in the Hippocampus and Neocortex (1995)
+- **Lokasi file:** `M2/Why There Are Complementary Learning Systems in the Hippocampus and Neocortex — McClelland, McNaughton & O'Reilly (1995), Psychological Review.pdf`
+- **Sprint/Modul terkait:** Sprint 2 (M2c) — analogi biologis fondasional untuk consolidation
+- **Ide inti:** *Psychological Review* 102(3). Paper klasik yang menjelaskan kenapa otak punya dua sistem belajar terpisah — hipokampus (belajar cepat, spesifik) dan neokorteks (belajar lambat, general) — dan bagaimana "consolidation" (transfer bertahap dari hipokampus ke neokorteks, bisa berbulan-tahun) adalah prinsip desain penting, bukan sekadar keterbatasan sistem saraf.
+- **Relevansi ke F.R.I.D.A.Y:** Fondasi konseptual paling dasar untuk arsitektur memori dua-lapis M2 — analog ke "working/recent memory" (cepat, spesifik, seperti hipokampus) vs "consolidated long-term knowledge" (lambat terbentuk, general, seperti neokorteks). Menjustifikasi kenapa M2a (short-term) dan M2b/M2c (long-term) memang harus dirancang sebagai sistem terpisah, bukan satu penyimpanan seragam.
+- **Sumber informasi:** Ekstraksi parsial — bagian tengah artikel (pembahasan consolidation) via pdftotext
+- **Catatan tambahan:** Ditambahkan user 2026-08-14. Paper neurosains kognitif tahun 1995 — sangat fondasional/teoretis, dipakai sebagai justifikasi arsitektur, bukan resep implementasi.
+
+### About Sleep's Role in Memory (2013)
+- **Lokasi file:** `M2/About Sleep's Role in Memory — Rasch & Born (2013), Physiological Reviews.pdf`
+- **Sprint/Modul terkait:** Sprint 2 (M2c) — analogi biologis untuk consolidation
+- **Ide inti:** *Physiological Reviews* 93:681-766 (2013). Review komprehensif soal bagaimana tidur (khususnya slow-wave sleep dan REM) berperan aktif dalam konsolidasi memori, bukan cuma waktu istirahat pasif.
+- **Relevansi ke F.R.I.D.A.Y:** Analogi tambahan untuk proses konsolidasi periodik/offline di M2c — mendukung ide "consolidation job" yang berjalan saat sistem idle (analog "tidur"), memproses memori mentah jadi insight lebih padat, mirip fungsi reflection di Generative Agents dan replay di paper Roscow et al.
+- **Sumber informasi:** Ekstraksi parsial — bagian intro via pdftotext
+- **Catatan tambahan:** ⚠️ **Mismatch ditemukan & diperbaiki 2026-08-14** — file awalnya diberi nama "The Memory Function of Sleep — Diekelmann & Born (2010), Nature Reviews Neuroscience.pdf" tapi isi aslinya adalah paper berbeda ("About Sleep's Role in Memory" oleh Rasch & Born, *Physiological Reviews* 2013 — bukan Diekelmann & Born 2010 di *Nature Reviews Neuroscience*, walau topik & salah satu penulis, Born, sama). Nama file sudah disesuaikan dengan isi asli, bukan dicari paper penggantinya, karena isinya sendiri tetap relevan dan sah untuk topik ini.
+
 ---
 
 ## Kategori #3 — Task Planning & Decomposition
@@ -912,7 +984,9 @@ Daftar semua isu integritas file yang ditemukan selama proses ini — file denga
 
 Tidak ada lagi file mismatch tersisa di seluruh koleksi. 2 baris di atas murni duplikat/versi-lain yang isinya identik, bukan masalah integritas.
 
-**Total paper diproses:** ~108 file per 2026-08-13 (109 per 2026-08-12, dikurangi 2 duplikat DS-CNN 2022 yang dihapus di M7, ditambah net 0 dari penggantian 3 file mismatch terakhir — 3 lama dihapus, 3 baru masuk). Dari total ini, **108 sudah punya sumber terverifikasi** (Teks penuh/Ekstraksi mendalam/Ekstraksi parsial) — **0** entry berstatus "Pengetahuan umum", dan **0** file mismatch tersisa di seluruh koleksi. Semua 16 kategori sudah terisi kuat. Migrasi ke skema folder per-modul `M0`-`M17` sudah genap 100% (2 folder tematik lama terakhir sudah dihapus karena kosong) — hanya folder `1/Nggak dulu/` yang tersisa di luar skema, sengaja dikecualikan sejak awal.
+**Total paper diproses:** ~117 file per 2026-08-14 (108 per 2026-08-13, ditambah 9 paper baru di M2 soal forgetting/consolidation — lihat update di bawah). Dari total ini, semua sudah punya sumber terverifikasi (Teks penuh/Ekstraksi mendalam/Ekstraksi parsial) — **0** entry berstatus "Pengetahuan umum", dan **0** file mismatch tersisa di seluruh koleksi. Semua 16 kategori sudah terisi kuat. Migrasi ke skema folder per-modul `M0`-`M17` sudah genap 100% (2 folder tematik lama terakhir sudah dihapus karena kosong) — hanya folder `1/Nggak dulu/` yang tersisa di luar skema, sengaja dikecualikan sejak awal.
+
+**[2026-08-14] Update tambahan #4 — 10 file baru user di M2, 1 duplikat + 1 mismatch ditemukan & diperbaiki:** User menambahkan 10 file PDF baru ke folder `M2/` (topik forgetting/consolidation/memory-organization untuk M2c, menjawab gap yang teridentifikasi saat diskusi kecukupan paper M2). Diverifikasi satu-satu via `pdftotext`: **9 cocok isi vs judul** (A Survey on the Memory Mechanism of LLM-based Agents, A-Mem, FSFM, MemoryBank, Recursively Summarizing, plus 4 paper neurosains dasar — Roscow/replay, Kirkpatrick/EWC, McClelland/Complementary Learning Systems, dan 1 paper sleep). **2 masalah ditemukan:** (1) file "Generative Agents...— Park et al. (2023), UIST.pdf" 100% duplikat (md5 identik) dengan file lama yang sudah ada — dihapus karena versi lama sudah tracked di git, versi baru untracked; (2) file "The Memory Function of Sleep — Diekelmann & Born (2010), Nature Reviews Neuroscience.pdf" isinya **bukan** paper itu — isi aslinya "About Sleep's Role in Memory" oleh Rasch & Born (2013), *Physiological Reviews* — nama file diperbaiki menyesuaikan isi asli (bukan dicari paper penggantinya, karena isinya tetap relevan). Juga ditemukan 1 salah atribusi nama file (bukan mismatch konten): "Recursively Summarizing...— Qian et al." seharusnya "— Wang et al." (penulis asli tidak ada nama Qian) — diperbaiki. Detail lengkap tiap paper ada di entry masing-masing di atas.
 
 **[2026-08-12] Update tambahan:** Struktur folder dirombak dari angka (`1/`-`5/`) + tematik jadi per-modul `M0/`-`M17/` (lihat catatan di bagian atas dokumen). `pdftotext` ternyata tersedia di environment ini — dipakai untuk 9 paper baru + berhasil membuka ulang 1 paper yang sebelumnya berstatus "Gagal dibaca" (Proactive Conversational Agents with Inner Thoughts).
 

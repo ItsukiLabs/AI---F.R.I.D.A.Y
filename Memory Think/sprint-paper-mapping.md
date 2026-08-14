@@ -33,7 +33,7 @@
 | Sprint | Modul | Kategori | Nama Kategori | Jml Paper |
 |---|---|---|---|---|
 | **1** | M0 + M1 | **#1** | Agentic AI / Tool Use | 5 |
-| **2** | M2 | **#2** | Memory Architecture | 3 |
+| **2** | M2 | **#2** | Memory Architecture | 14 |
 | **3** | M4 + M5 | **#4** + **#5** | Device Orchestration + IoT | 5 |
 | **4** | M11 ⚠️ | **#6** | Security & Permission | 4 |
 | **5** | M7–M10 | **#7** + **#8** + **#9** + **#10** | Voice Layer (4 kategori) | 5 |
@@ -72,9 +72,22 @@
 
 | # | Paper | Kategori | Sub-Modul | Fungsi di Modul Ini |
 |---|---|---|---|---|
-| 1 | **MemGPT** | #2 | M2c | Hirarki memori, paging |
-| 2 | **RAG Survey** | #2 | M2b | Pipeline retrieval & embedding |
+| 1 | **MemGPT** | #2 | M2c | ⭐ Wajib — hirarki memori, paging |
+| 2 | **RAG Survey (2023)** | #2 | M2b | Pipeline retrieval & embedding |
 | 3 | **Lost in the Middle** | #2 | M2a | Kenapa konteks panjang gagal |
+| 4 | **Generative Agents / Smallville** | #2 | M2a/M2c | Memory stream, reflection, re-planning |
+| 5 | **Survey on Retrieval-Augmented Text Generation (2022)** | #2 | M2b | Konteks historis RAG pra-LLM besar |
+| 6 | **Survey on the Memory Mechanism of LLM-based Agents (2024)** | #2 | M2a/b/c | Peta rujukan silang taksonomi memori |
+| 7 | **A-Mem: Agentic Memory (2025)** | #2 | M2b/M2c | Memori self-organizing ala Zettelkasten |
+| 8 | **FSFM: Selective Forgetting (2026)** | #2 | M2c | ⭐ Kerangka forgetting/eviction |
+| 9 | **MemoryBank (2023/AAAI24)** | #2 | M2c | ⭐ Forgetting via kurva Ebbinghaus |
+| 10 | **Recursively Summarizing... (2023)** | #2 | M2a/M2b | Kompresi konteks bertingkat |
+| 11 | **Learning Offline: Memory Replay (2021)** | #2 | M2c | Analogi biologis — consolidation via replay |
+| 12 | **Overcoming Catastrophic Forgetting / EWC (2017)** | #2 | M2c | Analogi biologis — retensi berbobot-penting |
+| 13 | **Complementary Learning Systems (1995)** | #2 | M2c | Fondasi teoretis 2-lapis short/long-term |
+| 14 | **About Sleep's Role in Memory (2013)** | #2 | M2c | Analogi biologis — consolidation periodik/offline |
+
+**[2026-08-14]** Kategori #2 diperluas dari 3 jadi 14 paper — user menambahkan 10 paper baru (9 diverifikasi cocok + 1 duplikat dihapus) untuk mengisi gap forgetting/consolidation mechanism di M2c yang teridentifikasi saat diskusi kecukupan riset M2. Detail lengkap tiap paper + 2 perbaikan nama file (1 mismatch, 1 salah atribusi) ada di `PAPER_NOTES.md` kategori #2.
 
 ---
 
