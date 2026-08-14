@@ -37,6 +37,8 @@ class LLMResponse:
     text: str | None
     tool_calls: list[ToolCallRequest] = field(default_factory=list)
     stop_reason: str = "end_turn"
+    input_tokens: int | None = None
+    output_tokens: int | None = None
 
 
 class LLMClient(Protocol):
@@ -98,7 +100,13 @@ class AnthropicLLMClient:
                     ToolCallRequest(id=block.id, name=block.name, arguments=block.input)
                 )
 
-        return LLMResponse(text=text, tool_calls=tool_calls, stop_reason=response.stop_reason)
+        return LLMResponse(
+            text=text,
+            tool_calls=tool_calls,
+            stop_reason=response.stop_reason,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
+        )
 
 
 def get_llm_client(provider: str | None = None) -> LLMClient:

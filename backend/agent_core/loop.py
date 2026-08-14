@@ -21,8 +21,15 @@ from typing import Any
 
 import jsonschema
 
+from backend.agent_core.config import (
+    get_memory_compaction_safety_margin_tokens,
+    get_memory_compaction_threshold_tokens,
+    get_memory_keep_recent_messages,
+)
 from backend.agent_core.llm_client import LLMClient, LLMResponse, ToolCallRequest
 from backend.agent_core.tool_registry import ToolRegistry
+from backend.memory.compaction import compact
+from backend.memory.session import Session
 
 DEFAULT_SYSTEM_PROMPT = (
     "You are F.R.I.D.A.Y, a personal AI assistant. Use the available tools "
@@ -79,17 +86,31 @@ def run_agent(
     llm: LLMClient,
     max_iterations: int = 6,
     system: str = DEFAULT_SYSTEM_PROMPT,
+    session: Session | None = None,
 ) -> AgentResult:
-    messages: list[dict[str, Any]] = [{"role": "user", "content": user_input}]
+    if session is not None:
+        if session.needs_compaction(
+            get_memory_compaction_threshold_tokens(),
+            get_memory_compaction_safety_margin_tokens(),
+        ):
+            compact(session, llm, keep_recent_messages=get_memory_keep_recent_messages())
+        session.append_user_message(user_input)
+        messages = session.messages
+    else:
+        messages = [{"role": "user", "content": user_input}]
+
     tools = registry.to_llm_tools()
 
     for iteration in range(1, max_iterations + 1):
-        response = llm.send(messages=messages, tools=tools, system=system)
+        llm_input = session.to_llm_messages() if session is not None else messages
+        response = llm.send(messages=llm_input, tools=tools, system=system)
+        if session is not None:
+            session.record_usage(response)
+
+        messages.append(_assistant_message(response))
 
         if not response.tool_calls:
             return AgentResult(text=response.text or "", iterations=iteration)
-
-        messages.append(_assistant_message(response))
 
         tool_results = []
         for call in response.tool_calls:

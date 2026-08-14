@@ -31,6 +31,9 @@ ENV/
 .env.*
 !.env.example
 
+# M2a session memory (local conversation state, not source)
+backend/memory/sessions/*.json
+
 # Testing / coverage
 .pytest_cache/
 .coverage
