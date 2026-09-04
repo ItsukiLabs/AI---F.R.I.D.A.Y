@@ -8,6 +8,15 @@ Import it directly: ``from backend.memory.runner import run_with_memory``.
 
 from backend.memory.compaction import compact
 from backend.memory.errors import SessionError, SessionLoadError, SessionSaveError, UnsupportedSessionSchemaError
+from backend.memory.profile import Profile
+from backend.memory.profile_errors import (
+    ProfileError,
+    ProfileFactNotFoundError,
+    ProfileLoadError,
+    ProfileSaveError,
+    UnsupportedProfileSchemaError,
+)
+from backend.memory.profile_store import ProfileStore
 from backend.memory.session import Session
 from backend.memory.store import SessionStore
 
@@ -18,5 +27,12 @@ __all__ = [
     "SessionLoadError",
     "SessionSaveError",
     "UnsupportedSessionSchemaError",
+    "Profile",
+    "ProfileStore",
+    "ProfileError",
+    "ProfileLoadError",
+    "ProfileSaveError",
+    "UnsupportedProfileSchemaError",
+    "ProfileFactNotFoundError",
     "compact",
 ]

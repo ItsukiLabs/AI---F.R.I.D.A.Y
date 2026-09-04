@@ -1,7 +1,7 @@
 # M2 — Memory System
 
-> Status: **M2a (short-term/active-context) selesai termasuk robustness pass (2026-08-14)** — 58 test lulus (1 skip platform-specific di Windows). M2b (long-term/retrieval) dan M2c (profile/hierarki/forgetting) belum digarap.
-> Paper rujukan: MemGPT, Generative Agents, Lost in the Middle, RAG Survey, Recursively Summarizing, dan 9 paper tambahan (forgetting/consolidation). Detail lengkap di `Memory Think/PAPER_NOTES.md` kategori #2.
+> Status: **M2a (short-term/active-context) selesai termasuk robustness pass (2026-08-14).** **M2c (profile memory) v1 selesai (2026-08-18)** — 97 test lulus (2 skip platform-specific di Windows). M2b (long-term/retrieval) belum digarap.
+> Paper rujukan: MemGPT, Generative Agents, Lost in the Middle, RAG Survey, Recursively Summarizing, dan 9 paper tambahan (forgetting/consolidation, termasuk MemoryBank & FSFM yang jadi rujukan v2 M2c). Detail lengkap di `Memory Think/PAPER_NOTES.md` kategori #2.
 
 ---
 
@@ -80,6 +80,37 @@ Konsekuensinya beda-beda tergantung di titik mana error terjadi:
 - File permission di Windows cuma toggle read-only, bukan restriksi akses user lain yang sesungguhnya (butuh pywin32/ACL manipulation untuk itu) — didokumentasikan sebagai limitasi platform.
 - Concurrent access (multi-writer ke `session_id` yang sama) — non-goal eksplisit untuk M2a v1, relevan lagi kalau arsitektur berubah jadi multi-process/background-agent.
 
+## Pendekatan (M2c)
+
+Tiga keputusan arsitektur disepakati lewat diskusi + pertanyaan pilihan ganda sebelum coding:
+
+1. **Cara fakta masuk: tool eksplisit** (`remember_user_fact`), bukan ekstraksi otomatis/background. Model manggil sendiri di tengah ReAct loop cuma saat user jelas-jelas minta diingat — traceable, satu tool call = satu jejak sebab-akibat, tidak nambah panggilan LLM tersembunyi.
+2. **Konflik fakta: newest wins + superseded trail.** Fakta baru (`remember_user_fact` dengan `supersedes=<id lama>`) langsung aktif, fakta lama ditandai `superseded` (bukan dihapus — tetap ada jejak audit).
+3. **Forgetting v1: manual delete saja** (`forget_user_fact`, hanya atas permintaan eksplisit user). Decay otomatis ala MemoryBank (kurva Ebbinghaus) atau eviction berbasis kapasitas ala FSFM **ditunda ke v2** — didokumentasikan sebagai TODO, bukan dibangun sekarang, karena threshold decay masih tebakan buta tanpa data pemakaian nyata (alasan yang sama kenapa threshold kompaksi M2a juga masih "tebakan awal").
+
+## Ringkasan Teknis (implementasi nyata, 2026-08-18)
+
+Struktur file baru:
+
+- `backend/schemas/profile_contract.py` — `ProfileFact`/`ProfileRecord` (Pydantic), `PROFILE_SCHEMA_VERSION` independen dari `MEMORY_SCHEMA_VERSION` (sumbu perubahan beda, sama alasan kenapa M2a juga tidak reuse versi M0). `ProfileFact.id` sequential (`fact_0001`, dst, bukan UUID) supaya model bisa cite balik id-nya dengan hemat token. `category` freeform string (bukan enum) — taksonomi fakta personal belum diketahui tanpa data pemakaian nyata; guardrail-nya cuma `maxLength` + instruksi tool description supaya model reuse kategori yang sudah ada.
+- `backend/memory/profile.py` — `Profile` (dataclass runtime, wraps `ProfileRecord` + flag `dirty` runtime-only). `remember_fact()`: assign id baru, kalau `supersedes` diisi validasi target masih `active` (raise `ProfileFactNotFoundError` kalau tidak), flip status lama jadi `superseded` + link `superseded_by`. `forget_fact()`: idempotent (forget fakta yang sudah `deleted` = no-op sukses, bukan error — supaya "lupain X" yang diulang tidak nge-error), raise kalau id genuinely tidak ada. `to_context_block()`: render fakta aktif jadi teks buat system prompt, `""` kalau kosong (supaya profile kosong tidak nambah section aneh ke prompt).
+- `backend/memory/profile_store.py` — `ProfileStore`: singleton file `profile.json` (beda dari `SessionStore` yang per-`session_id`). Robustness properties ditiru **persis** dari `SessionStore` M2a (atomic write, fail-loud exceptions, schema_version check, `_restrict_permissions` best-effort chmod) — **diduplikasi**, bukan diekstrak ke util bersama, supaya tidak menyentuh file M2a yang sudah di-review & di-push untuk manfaat kosmetik semata.
+- `backend/memory/profile_errors.py` — `ProfileError` (base) → `ProfileLoadError`, `ProfileSaveError`, `UnsupportedProfileSchemaError`, `ProfileFactNotFoundError`. Mirror `backend/memory/errors.py`.
+- `backend/agent_core/tools/profile_tools.py` — `make_profile_tools(profile)`: factory yang bind closure `remember_user_fact`/`forget_user_fact` ke objek `Profile` **runtime** (bukan `ProfileStore`) — kalau tool dibind ke store dan tiap panggilan `load()`/`save()` sendiri, akan ada 2 salinan `Profile` independen dalam 1 turn yang bisa divergen (iterasi ReAct ke-2 tidak lihat fakta yang baru ditulis tool di iterasi ke-1). Karena butuh state per-turn, tool ini **tidak** masuk `ALL_TOOLS` statis. Kedua tool `permission_tier=STANDARD` (bukan `CRITICAL`) — menulis/hapus fakta personal bukan `READ_ONLY`, tapi juga bukan aksi ireversibel ke dunia luar; `forget_user_fact` khususnya cuma jalan atas permintaan eksplisit user by design.
+- `backend/agent_core/loop.py` — `run_agent()` dapat param baru `profile: Profile | None = None`, **additive murni** (`profile=None` → behavior identik 100%). Blok `to_context_block()` di-append ke `system` prompt (bukan ke `messages`) — profile facts sengaja dijaga di luar jalur `messages` supaya tidak pernah lewat compaction/summarization yang bisa menyimpulkan hal yang tidak dinyatakan. Dihitung ulang tiap iterasi loop (mirror pola `session.to_llm_messages()`) supaya mutasi tool di iterasi 1 langsung kelihatan di iterasi 2 dalam turn yang sama.
+- `backend/memory/runner.py` — `run_with_profile_memory()` baru, **`run_with_memory()` tidak disentuh sebaris pun**. Registry dikompos ulang tiap panggilan (tool caller stateless + 2 tool profile fresh-bound) karena `ToolRegistry.register()` raise error kalau nama sudah terdaftar — kalau register langsung ke `registry` yang caller kasih dan dipanggil berulang (loop chat nyata), panggilan kedua akan meledak. Butuh 1 method baru additive di `ToolRegistry`: `registered_tools()`. Profile cuma di-save kalau `profile.dirty` — hemat I/O untuk turn yang tidak menyentuh fakta apa pun.
+
+**Verifikasi nyata (2026-08-18):** smoke test manual dengan `ANTHROPIC_API_KEY` asli, 4 giliran: (a) session A minta diingat alergi kacang → tersimpan `fact_0001`; (b) session **B** (session_id beda sama sekali) tanya "aku alergi apa?" → jawab benar merujuk `fact_0001` (bukti recall lintas sesi, bukan cuma lintas restart proses seperti M2a); (c) session B kasih info kontradiktif (alergi shellfish, bukan kacang) → model panggil `remember_user_fact(supersedes=fact_0001)` sendiri, `fact_0001` jadi `superseded`, `fact_0002` aktif; (d) minta lupain info alergi → `forget_user_fact` dipanggil, `fact_0002` jadi `deleted`, `to_context_block()` balik kosong. Semua 4 skenario jalan tanpa intervensi manual.
+
+**Test** (`test_profile*.py`, `test_agent_loop_profile.py`, `test_memory_runner_profile.py`, +1 di `test_tool_registry.py`) — 39 test baru, semua pakai `FakeLLMClient`/`tmp_path`, tidak ada yang hit API/disk asli. **97 passed, 2 skipped** total (58 lama M0/M1/M2a + 39 baru M2c), regresi nol — `test_agent_loop.py`, `test_agent_loop_session.py`, `test_memory_runner.py` lama tidak diubah sebaris pun.
+
+**Belum digarap / TODO v2:**
+- Decay otomatis (MemoryBank, kurva Ebbinghaus) atau eviction berbasis kapasitas (FSFM) — sengaja ditunda, 9 paper forgetting/consolidation sudah diriset (`PAPER_NOTES.md` kategori #2) tapi threshold-nya butuh data pemakaian nyata dulu.
+- Ekstraksi fakta otomatis/background (piggyback compaction) — sudah diputuskan tidak dipakai untuk v1, tool-eksplisit-only.
+- M2b (retrieval/embedding/vector store) — `session.archived_turns` tetap hook yang belum dibaca siapa pun.
+- Error-path persistence: kalau `session_store.save()` sukses tapi `profile_store.save()` gagal setelahnya (network hiccup, disk penuh, dst di antara 2 write terpisah), turn tercatat di sesi tapi fakta baru bisa hilang — mewarisi kelas masalah yang sama dengan gap "Semantik Error-Path Persistence" M2a (lihat sub-bagian di atas), sengaja tidak diperbaiki sepihak, butuh keputusan produk terpisah.
+- `permission_tier` `forget_user_fact` dipilih `STANDARD` (bukan `CRITICAL`) — keputusan produk, bisa direvisit pas M11 (Security) kalau ternyata butuh konfirmasi tambahan sebelum eksekusi hapus data personal.
+
 ## Bahasa Awam
 
 Kalau M1 itu "orangnya yang mikir dan pakai alat", M2a itu **buku catatan kecil** yang dia pegang selama ngobrol sama kamu.
@@ -91,3 +122,11 @@ Sebelum M2a: F.R.I.D.A.Y kayak orang amnesia — tiap kali kamu ngomong lagi, di
 3. **Pas mau jawab**, dia taruh rangkuman itu di halaman paling depan buku catatannya (bukan diselipin di tengah-tengah) — soalnya kalau diselipin di tengah, dia gampang "kelewat baca" bagian itu. Halaman-halaman terbaru tetap ditulis lengkap apa adanya di belakang.
 
 Ini masih "buku catatan satu obrolan" doang — F.R.I.D.A.Y belum bisa "nginget balik" hal dari obrolan yang beda sama sekali tanpa diingatkan (itu tugas M2b nanti, kayak dia buka-buka arsip buku catatan lamanya). Tapi sekarang, minimal, obrolan yang sama nggak lagi "reset" tiap kali kamu nutup dan buka lagi F.R.I.D.A.Y.
+
+Kalau M2a itu buku catatan satu obrolan, **M2c itu kartu identitas** yang dia bawa ke SETIAP obrolan, obrolan baru sekalipun. Bedanya penting: buku catatan M2a ditutup begitu obrolan itu selesai (obrolan lain nggak bisa buka buku itu), tapi kartu identitas M2c selalu ikut, obrolan mana pun yang kamu mulai.
+
+1. **Dia cuma nulis di kartu itu kalau kamu bilang eksplisit** ("inget ya, aku alergi kacang") — dia nggak diam-diam nyimpulin dari obrolan biasa terus dianggap fakta permanen. Ini beda banget sama M2a yang cuma "mringkas" apa yang dibahas — M2c "mencatat" fakta tentang kamu.
+2. **Kalau ada info baru yang beda dari catatan lama** (misal pindah alamat), dia nggak nimpa diam-diam — catatan lama ditandai "sudah nggak berlaku" (bukan dihapus, biar ada jejak kalau mau ditelusuri), catatan baru yang jadi aktif.
+3. **Kalau kamu bilang "lupain soal itu"**, dia coret dari kartu identitasnya — tapi HARUS kamu yang minta, dia nggak akan hapus sendiri.
+
+Sekarang kalau kamu mulai obrolan baru sama sekali, F.R.I.D.A.Y tetap "kenal" kamu — bukan cuma inget percakapan yang sama, tapi inget KAMU.

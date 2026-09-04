@@ -34,6 +34,9 @@ ENV/
 # M2a session memory (local conversation state, not source)
 backend/memory/sessions/*.json
 
+# M2c user profile (local personal data, not source)
+backend/memory/profile/*.json
+
 # Testing / coverage
 .pytest_cache/
 .coverage

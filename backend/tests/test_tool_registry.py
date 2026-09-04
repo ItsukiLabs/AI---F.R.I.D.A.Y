@@ -57,3 +57,14 @@ def test_to_llm_tools_matches_anthropic_tool_format():
             "input_schema": CONTRACT.input_schema,
         }
     ]
+
+
+def test_registered_tools_returns_all_registered_pairs():
+    registry = ToolRegistry()
+    registry.register(CONTRACT, dummy)
+
+    registered = registry.registered_tools()
+
+    assert len(registered) == 1
+    assert registered[0].contract is CONTRACT
+    assert registered[0].fn is dummy

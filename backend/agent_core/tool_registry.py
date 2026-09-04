@@ -30,6 +30,9 @@ class ToolRegistry:
         except KeyError:
             raise KeyError(f"No tool registered under name {name!r}") from None
 
+    def registered_tools(self) -> list[RegisteredTool]:
+        return list(self._tools.values())
+
     def to_llm_tools(self) -> list[dict[str, Any]]:
         return [
             tool_contract_to_anthropic_tool(registered.contract)

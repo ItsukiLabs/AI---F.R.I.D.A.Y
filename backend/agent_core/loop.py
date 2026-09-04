@@ -29,6 +29,7 @@ from backend.agent_core.config import (
 from backend.agent_core.llm_client import LLMClient, LLMResponse, ToolCallRequest
 from backend.agent_core.tool_registry import ToolRegistry
 from backend.memory.compaction import compact
+from backend.memory.profile import Profile
 from backend.memory.session import Session
 
 DEFAULT_SYSTEM_PROMPT = (
@@ -87,6 +88,7 @@ def run_agent(
     max_iterations: int = 6,
     system: str = DEFAULT_SYSTEM_PROMPT,
     session: Session | None = None,
+    profile: Profile | None = None,
 ) -> AgentResult:
     if session is not None:
         if session.needs_compaction(
@@ -103,7 +105,12 @@ def run_agent(
 
     for iteration in range(1, max_iterations + 1):
         llm_input = session.to_llm_messages() if session is not None else messages
-        response = llm.send(messages=llm_input, tools=tools, system=system)
+        effective_system = system
+        if profile is not None:
+            block = profile.to_context_block()
+            if block:
+                effective_system = f"{system}\n\n{block}"
+        response = llm.send(messages=llm_input, tools=tools, system=effective_system)
         if session is not None:
             session.record_usage(response)
 
