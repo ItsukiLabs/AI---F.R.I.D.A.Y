@@ -168,3 +168,10 @@
   - M2b (retrieval/embedding) — belum mulai, `archived_turns` masih hook kosong.
   - Error-path persistence (kalau `session_store.save()` sukses tapi `profile_store.save()` gagal) — mewarisi gap yang sama dengan M2a, didokumentasikan tidak diperbaiki sepihak.
   - `permission_tier` `forget_user_fact` = `STANDARD` bisa direvisit pas M11 (Security) kalau ternyata butuh konfirmasi tambahan.
+
+## [2026-09-04] Commit + push M2c
+
+- **Apa yang dikerjakan:** User minta commit & push hasil implementasi M2c. Test suite dijalankan ulang sebelum commit (`python -m pytest backend/tests/ -q` → 97 passed, 2 skipped). Semua 21 file M2c (5 modul baru + 6 file test baru + `profile/.gitkeep` + perubahan additive di `loop.py`/`runner.py`/`tool_registry.py`/`__init__.py` + `.gitignore` + `M2_memory.md` + `SPRINT2_LOG.md`) di-stage dan di-commit sebagai `643fd2d` (`feat(m2c): implement profile memory (long-term user facts)`), lalu di-push ke `origin/master` (`d6611c6..643fd2d`).
+- **File yang dibuat/diubah:** `Memory Think/SPRINT2_LOG.md` — entry ini. (Sisanya = isi commit `643fd2d`, sudah didetailkan di entry `[2026-08-18]`.)
+- **Alasan/keputusan:** TODO "belum di-commit/push" dari entry `[2026-08-18]` sekarang **selesai** — M2c sudah ada di remote.
+- **Belum dikerjakan / TODO lanjutan:** Sama seperti entry `[2026-08-18]` minus item commit/push: decay otomatis (v2), M2b belum mulai, error-path persistence lintas store, revisit `permission_tier` di M11.
