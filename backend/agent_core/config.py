@@ -15,6 +15,7 @@ DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5"
 DEFAULT_MEMORY_COMPACTION_THRESHOLD_TOKENS = 6000
 DEFAULT_MEMORY_COMPACTION_SAFETY_MARGIN_TOKENS = 500
 DEFAULT_MEMORY_KEEP_RECENT_MESSAGES = 6
+DEFAULT_MEMORY_RECALL_LIMIT = 5
 
 # NOTE: context_limit / reserved_output_tokens / model-specific token
 # budgets are deliberately NOT implemented here. F.R.I.D.A.Y only has one
@@ -65,3 +66,8 @@ def get_memory_keep_recent_messages() -> int:
     return int(
         os.environ.get("MEMORY_KEEP_RECENT_MESSAGES") or DEFAULT_MEMORY_KEEP_RECENT_MESSAGES
     )
+
+
+def get_memory_recall_default_limit() -> int:
+    """How many past turns ``recall_memory`` returns when the model omits ``limit``."""
+    return int(os.environ.get("MEMORY_RECALL_DEFAULT_LIMIT") or DEFAULT_MEMORY_RECALL_LIMIT)

@@ -1,3 +1,4 @@
+from backend.schemas.archive_contract import ARCHIVE_SCHEMA_VERSION, RecallHit
 from backend.schemas.memory_contract import (
     MEMORY_SCHEMA_VERSION,
     MessageRecord,
@@ -12,6 +13,7 @@ from backend.schemas.tool_contract import PermissionTier, ToolAnnotations, ToolC
 from backend.schemas.versioning import CONTRACT_VERSION
 
 __all__ = [
+    "ARCHIVE_SCHEMA_VERSION",
     "CONTRACT_VERSION",
     "MEMORY_SCHEMA_VERSION",
     "MessageRecord",
@@ -19,6 +21,7 @@ __all__ = [
     "PROFILE_SCHEMA_VERSION",
     "ProfileFact",
     "ProfileRecord",
+    "RecallHit",
     "SessionRecord",
     "ToolAnnotations",
     "ToolContract",

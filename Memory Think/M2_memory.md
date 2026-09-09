@@ -1,7 +1,7 @@
 # M2 — Memory System
 
-> Status: **M2a (short-term/active-context) selesai termasuk robustness pass (2026-08-14).** **M2c (profile memory) v1 selesai (2026-08-18)** — 97 test lulus (2 skip platform-specific di Windows). M2b (long-term/retrieval) belum digarap.
-> Paper rujukan: MemGPT, Generative Agents, Lost in the Middle, RAG Survey, Recursively Summarizing, dan 9 paper tambahan (forgetting/consolidation, termasuk MemoryBank & FSFM yang jadi rujukan v2 M2c). Detail lengkap di `Memory Think/PAPER_NOTES.md` kategori #2.
+> Status: **M2a (short-term/active-context) selesai termasuk robustness pass (2026-08-14).** **M2c (profile memory) v1 selesai (2026-08-18).** **M2b (long-term recall) v1 selesai (2026-09-09)** — 135 test lulus (3 skip platform-specific di Windows). Ketiga lapis M2 sekarang ada.
+> Paper rujukan: MemGPT, Generative Agents, Lost in the Middle, RAG Survey, Recursively Summarizing, 9 paper forgetting/consolidation (MemoryBank & FSFM jadi rujukan v2 M2c), dan 6 paper retrieval/long-term memory untuk M2b (Storage Is Not Memory, Mem0, Zep, HippoRAG, Memory OS, Graph-based Agent Memory survey). Detail lengkap di `Memory Think/PAPER_NOTES.md` kategori #2.
 
 ---
 
@@ -9,9 +9,9 @@
 
 M2 adalah **ingatan** F.R.I.D.A.Y. Tanpa M2, M1 (agent loop) mulai dari nol setiap kali dipanggil — tidak ada percakapan yang benar-benar "lanjut", apalagi diingat lintas sesi. M2 dipecah 3 sub-modul karena "mengingat" itu 3 masalah teknis berbeda:
 
-- **M2a (digarap sekarang)** — memori jangka pendek/konteks aktif: apa yang lagi dibahas dalam satu percakapan, dan bagaimana caranya tetap rapi & tidak "meledak" kalau kepanjangan.
-- **M2b (belum digarap)** — memori jangka panjang: nyari balik info relevan dari percakapan-percakapan lama lewat retrieval/embedding.
-- **M2c (belum digarap)** — profile/hierarki: mengorganisir memori (bukan rata semua), dan kapan sesuatu boleh "dilupain".
+- **M2a (selesai)** — memori jangka pendek/konteks aktif: apa yang lagi dibahas dalam satu percakapan, dan bagaimana caranya tetap rapi & tidak "meledak" kalau kepanjangan.
+- **M2b (selesai)** — memori jangka panjang: nyari balik kutipan relevan dari percakapan-percakapan lama lewat keyword search atas arsip verbatim (bukan embedding — lihat "Pendekatan (M2b)").
+- **M2c (selesai)** — profile/hierarki: mengorganisir memori (bukan rata semua), dan kapan sesuatu boleh "dilupain".
 
 ## Pendekatan (M2a)
 
@@ -71,7 +71,7 @@ Konsekuensinya beda-beda tergantung di titik mana error terjadi:
 
 **Belum digarap / TODO lanjutan:**
 - Mid-call token overflow belum ada pengaman darurat — kompaksi cuma dicek di awal `run_agent()` (batas aman, lihat alasan di atas), jadi satu panggilan dengan banyak iterasi tool secara teori bisa lewat budget sebelum sempat dicek lagi. Diterima sebagai gap v1 (disepakati dengan user) — dan dikonfirmasi ulang saat review: ini gap struktural (soal *di mana* boleh potong, bukan soal akurasi pengukuran token), jadi estimator token yang lebih baik pun tidak akan menutup celah ini. `max_iterations` sudah membatasi risikonya.
-- Belum ada cross-session recall (M2b) — `session.archived_turns` sudah jadi seam/hook (turn yang di-drop saat kompaksi disimpan di situ, tidak dibaca/dipangkas M2a), tapi belum ada yang meng-index/embed-nya.
+- ~~Belum ada cross-session recall (M2b)~~ — **selesai 2026-09-09**, lihat bagian "Pendekatan (M2b)". `session.archived_turns` sekarang dibaca `ArchiveStore.ingest()` (bersama `messages`) — M2a sendiri tetap tidak menyentuhnya.
 - Belum ada kebijakan forgetting/eviction jangka panjang (M2c) — 9 paper untuk ini sudah diriset (lihat `PAPER_NOTES.md`), belum diimplementasi.
 - `context_limit`/`reserved_output_tokens`/tokenizer-model-specific budget — ditunda ke Sprint 8 (lihat catatan review di atas).
 - Default `MEMORY_COMPACTION_THRESHOLD_TOKENS`/`MEMORY_COMPACTION_SAFETY_MARGIN_TOKENS`/`MEMORY_KEEP_RECENT_MESSAGES` masih tebakan awal (6000 / 500 / 6) — belum divalidasi terhadap pemakaian nyata jangka panjang.
@@ -107,9 +107,57 @@ Struktur file baru:
 **Belum digarap / TODO v2:**
 - Decay otomatis (MemoryBank, kurva Ebbinghaus) atau eviction berbasis kapasitas (FSFM) — sengaja ditunda, 9 paper forgetting/consolidation sudah diriset (`PAPER_NOTES.md` kategori #2) tapi threshold-nya butuh data pemakaian nyata dulu.
 - Ekstraksi fakta otomatis/background (piggyback compaction) — sudah diputuskan tidak dipakai untuk v1, tool-eksplisit-only.
-- M2b (retrieval/embedding/vector store) — `session.archived_turns` tetap hook yang belum dibaca siapa pun.
+- ~~M2b (retrieval/embedding/vector store)~~ — **selesai 2026-09-09** tanpa embedding/vector store, lihat bagian "Pendekatan (M2b)".
 - Error-path persistence: kalau `session_store.save()` sukses tapi `profile_store.save()` gagal setelahnya (network hiccup, disk penuh, dst di antara 2 write terpisah), turn tercatat di sesi tapi fakta baru bisa hilang — mewarisi kelas masalah yang sama dengan gap "Semantik Error-Path Persistence" M2a (lihat sub-bagian di atas), sengaja tidak diperbaiki sepihak, butuh keputusan produk terpisah.
 - `permission_tier` `forget_user_fact` dipilih `STANDARD` (bukan `CRITICAL`) — keputusan produk, bisa direvisit pas M11 (Security) kalau ternyata butuh konfirmasi tambahan sebelum eksekusi hapus data personal.
+
+## Pendekatan (M2b)
+
+6 paper baru (2026-09-09) terbelah 2 kubu, dan pilihan kubunya adalah keputusan arsitektur paling penting M2b:
+
+- **Extraction-centered** (Mem0, Zep/Graphiti): saat ingest, LLM mem-parse percakapan jadi fakta atomik / node knowledge-graph, itu yang disimpan & dicari by similarity.
+- **Retrieval-centered** (*Storage Is Not Memory*): simpan event **verbatim**, jangan interpretasi di depan — "apa yang dibuang sebelum query diketahui tidak bisa dipulihkan saat retrieval." Pintarnya di sisi retrieval. Seluruh sistem satu file SQLite tanpa vector DB/GPU, dan di LoCoMo justru ranking-nya paling tinggi.
+
+Tiga keputusan user (via pertanyaan pilihan ganda sebelum coding):
+
+1. **Retrieval-centered, verbatim, SQLite FTS5.** Ini bukan cuma soal skor benchmark — kubu ini persis selaras dengan prinsip yang sudah dipegang sejak M2a ("summarization must not invent facts", `archived_turns` sengaja disimpan mentah) dan M2c (fakta cuma lewat tool eksplisit). Extractor fakta ala Mem0 akan jadi jalur belakang yang mengubah obrolan biasa jadi "fakta" tanpa instruksi user — persis yang dilarang. Tanpa embedding/vector DB/LLM saat ingest; `sqlite3` stdlib, nol dependency baru.
+2. **Index semua turn semua sesi**, bukan cuma `archived_turns` — kalau cuma hasil kompaksi, sesi pendek yang tidak pernah dikompaksi tidak akan pernah bisa di-recall.
+3. **Tool eksplisit `recall_memory`** yang model panggil sendiri (pola MemGPT archival-search, konsisten dengan `remember_user_fact` M2c) — bukan auto-inject tiap turn yang nambah latensi+token setiap giliran dan berisiko mengotori konteks dengan hasil tidak relevan.
+
+*Memory OS of AI Agent* memvalidasi struktur 3-lapis yang sekarang lengkap: short-term (M2a) / **mid-term = M2b** (arsip percakapan yang sudah keluar dari konteks aktif tapi bukan fakta profil) / long-term personal (M2c). Bedanya dengan Memory OS: kita **tidak** punya promosi otomatis mid→long — itu tetap cuma lewat `remember_user_fact`.
+
+## Ringkasan Teknis (implementasi nyata, 2026-09-09)
+
+Struktur file baru:
+
+- `backend/schemas/archive_contract.py` — `ARCHIVE_SCHEMA_VERSION` (independen dari versi sesi/profil, alasan sama seperti M2c) + `RecallHit` (pydantic): `session_id, ordinal, role, text, session_started_at, indexed_at`. Tidak ada pydantic *record* on-disk — bentuk durable-nya adalah DDL SQLite.
+- `backend/memory/archive_store.py` — `ArchiveStore`: satu file `backend/memory/archive/memory.db` (di-gitignore). Tabel `meta` (schema_version), `sessions_ingest`, `turns` (tabel dasar, `UNIQUE(session_id, session_created_at, ordinal)`, kolom `text` untuk search + `content_json` verbatim), dan `turns_fts` (external-content FTS5, tokenizer `unicode61 remove_diacritics 2`). Bukan tabel FTS5 tunggal karena virtual table tidak bisa punya `UNIQUE`.
+- `backend/memory/archive_errors.py` — `ArchiveError` → `ArchiveLoadError`, `ArchiveSaveError`, `UnsupportedArchiveSchemaError`. Mirror M2a/M2c.
+- `backend/agent_core/tools/recall_tools.py` — `RECALL_MEMORY_CONTRACT` (`permission_tier=READ_ONLY`, `read_only_hint=True`) + `make_recall_tools(archive, current_session)`. Deskripsi tool-nya *load-bearing*: hasil = **VERBATIM QUOTES** bertanggal, bukan fakta terverifikasi, kutip sebagai "in an earlier conversation you said…", jangan nyatakan sebagai kebenaran saat ini, kalau mau diingat durable pakai `remember_user_fact`. Output tiap hit dipotong 600 char + flag `truncated`; `limit` default dari config (5), hard cap 20.
+- `backend/memory/runner.py` — `run_with_long_term_memory()` baru, 2 runner lama **tidak disentuh**. Registry per-turn = tool caller + 2 tool profil + `recall_memory`. Urutan tulis: sesi → profil (kalau dirty) → **arsip terakhir**.
+- `backend/agent_core/config.py` — `get_memory_recall_default_limit()` (default 5), `.env.example` diupdate.
+- **`loop.py` tidak berubah sama sekali** — `recall_memory` cuma tool registry biasa; `_execute_tool_call` sudah validasi `input_schema` & ubah exception (termasuk `ArchiveLoadError`) jadi observasi verbal. Bonus: `tool_result` mendarat di *ekor* message list = posisi paling optimal menurut Lost in the Middle, tanpa usaha ekstra.
+
+Lima keputusan desain teknis (semua diverifikasi empiris di SQLite venv sebelum ditulis):
+
+- **Kunci idempotensi ingest = `(session_id, session_created_at)`**, disimpan di DB arsip (bukan di file sesi — `SessionRecord` schema TIDAK diubah, karena `SessionStore.load()` cek versi strict tanpa migrasi, bump = semua sesi lama tidak bisa dimuat). History penuh sebuah sesi selalu `archived_turns + messages` (kompaksi cuma memindah, totalnya cuma naik), arsip menyimpan `ingested_count` per generasi. `created_at` yang membedakan dua percakapan berbeda yang kebetulan pakai `session_id` sama (file sesi dihapus & dibuat ulang — kejadian rutin di smoke test) — tanpa itu, turn percakapan baru akan dinomori seolah lanjutan yang lama. History lebih pendek dari count (cuma mungkin via edit manual) → `ArchiveSaveError`, bukan renumber diam-diam.
+- **Sesi sendiri: turn yang sudah di-`archived_turns` IKUT bisa di-recall, live window (`ordinal >= len(archived_turns)`) DIKECUALIKAN** — live window sudah ada di prompt, mengembalikannya = persis "confusing context with memory". Cutoff dibaca *lazy* di dalam closure saat tool dipanggil, karena kompaksi jalan di awal `run_agent()` *setelah* registry disusun.
+- **Query: tokenisasi `[^\W_]+` lalu tiap token dibungkus `"…"`** — sama dengan token yang unicode61 hasilkan, jadi sintaks FTS5 (`"`, `*`, `(`, `-`, `AND`/`OR`/`NOT`) tidak mungkin lolos sebagai operator. **AND dulu, fallback OR kalau AND kosong** (precision-first; model sering nulis query longgar). Tanpa token → `[]` tanpa buka DB.
+- **Render `text` untuk index**: string apa adanya; blok list → text digabung, `[tool_use <name>] <input>`, `[tool_result] <content>` — supaya aktivitas tool lama bisa dicari by nama tool atau isi hasilnya. `content_json` tetap verbatim.
+- **Fail loud, 3 arah**: file bukan SQLite → `ArchiveLoadError`; SQLite tapi tanpa tabel `meta` (DB asing) → `ArchiveLoadError`, tidak disentuh; `schema_version` beda → `UnsupportedArchiveSchemaError`. DB belum ada → dibuat saat pertama dipakai.
+
+**Verifikasi nyata (2026-09-09):** smoke test manual dengan `ANTHROPIC_API_KEY` asli (`claude-haiku-4-5`), folder data terisolasi: sesi A cerita sambil lalu ("makan di warung… ketemu Pak Budi yang bilang printer lantai 3 rusak lagi") tanpa minta diingat → model **tidak** memanggil `remember_user_fact` (benar — bukan fakta durable). Sesi B (session_id beda sama sekali): "Kemarin aku pernah cerita soal printer nggak ya?" → model memanggil `recall_memory(query="printer")` **sendiri** (2 iterasi), menjawab dengan framing "Dalam obrolan sebelumnya, kamu menceritakan bahwa… printer lantai 3 rusak lagi" — kutipan, bukan pernyataan fakta. `profile.json` tidak pernah dibuat, 6 turn ter-arsip di `memory.db`. Data smoke dihapus setelahnya.
+
+**Test** (`test_archive_store.py`, `test_recall_tools.py`, `test_memory_runner_long_term.py`) — 39 kasus test baru (36 fungsi, 1 di-parametrize 4 kasus; 1 skip = permission POSIX di Windows), semua `FakeLLMClient`/`tmp_path`. **135 passed, 3 skipped** total (99 kasus lama + 39 baru), regresi nol — tidak ada file test lama yang berubah. Cover termasuk: ingest setelah kompaksi tidak duplikat & ordinal kontinu; sesi dibuat ulang id sama → generasi sendiri tanpa `IntegrityError`; AND→OR fallback; sanitasi sintaks FTS5; fold diakritik; exclude live window; cutoff lazy; ingest gagal → exception propagate tapi sesi sudah durable & turn berikutnya catch-up; 2 runner lama tidak mengirim `recall_memory`.
+
+**Belum digarap / TODO v2 (M2b):**
+- **Ranking**: v1 murni bm25 + tie-break id terbaru. Observasi smoke test: turn pendek seperti `[tool_use recall_memory] {"query": "printer"}` dapat skor bm25 tinggi karena dokumennya pendek — tidak salah, tapi kandidat down-weight/exclude turn yang isinya cuma blok tool. Lebih jauh: skor gabungan relevance + recency + importance ala Generative Agents, atau fakta ber-validitas-waktu ala Zep.
+- **Tokenizer**: `unicode61` tanpa stemming — `kucing` tidak match `kucingnya`. Opsi: prefix `*` di token, atau tokenizer `trigram` (sudah diverifikasi tersedia). Ditunda karena nambah noise; butuh data pemakaian nyata.
+- Tool `read_conversation_around(session_id, ordinal)` — seam-nya sudah ada (`session_id`+`ordinal` di tiap hit), belum dibangun.
+- Forgetting/eviction untuk arsip (FSFM, MemoryBank) & *encoding gate* ala Storage Is Not Memory — sama seperti M2c, ditunda sampai ada data pemakaian nyata. Kalau nanti ada delete, `turns_fts` butuh trigger/`'delete'` command (v1 cuma INSERT).
+- Reflexion persistence lintas sesi (TODO sejak M1) — arsip ini sekarang bisa jadi tempatnya (taksonomi *experience memory* di survei Graph-based Agent Memory), belum dikerjakan.
+- Error-path persistence lintas store — arsip ditulis terakhir dan self-healing (idempoten by count), tapi tetap kelas gap yang sama dengan M2a/M2c; belum ada keputusan produk untuk giliran yang gagal di tengah.
+- Concurrent writers — non-goal, sama seperti M2a/M2c; SQLite locking bikin aman, bukan cepat.
 
 ## Bahasa Awam
 
@@ -130,3 +178,11 @@ Kalau M2a itu buku catatan satu obrolan, **M2c itu kartu identitas** yang dia ba
 3. **Kalau kamu bilang "lupain soal itu"**, dia coret dari kartu identitasnya — tapi HARUS kamu yang minta, dia nggak akan hapus sendiri.
 
 Sekarang kalau kamu mulai obrolan baru sama sekali, F.R.I.D.A.Y tetap "kenal" kamu — bukan cuma inget percakapan yang sama, tapi inget KAMU.
+
+Kalau M2a itu buku catatan satu obrolan dan M2c itu kartu identitas, **M2b itu lemari arsip** tempat SEMUA buku catatan lama disimpan — dan dia bisa buka-buka lemari itu pakai kata kunci.
+
+1. **Tiap obrolan selesai, buku catatannya masuk lemari apa adanya** — nggak dirangkum, nggak "ditafsirkan" dulu. Persis kata-katanya. Soalnya kalau dirangkum duluan, detail yang nanti ternyata penting bisa keburu hilang sebelum ada yang nanya.
+2. **Dia baru buka lemari kalau merasa perlu** ("kemarin aku pernah cerita soal printer nggak?") — dia cari pakai kata kunci, dapat beberapa kutipan lengkap dengan "dari obrolan mana" dan "kapan". Nggak tiap ngobrol dia bongkar lemari.
+3. **Yang dia dapat itu kutipan, bukan kesimpulan.** Dia bakal bilang "di obrolan sebelumnya kamu pernah bilang…", bukan "kamu itu orangnya begini". Kalau kamu mau sesuatu beneran dicatat sebagai fakta tentang kamu, itu tetap harus lewat kartu identitas (M2c) — lemari arsip nggak pernah nulis ke kartu itu sendiri.
+
+Jadi sekarang lengkap: dia inget obrolan yang lagi jalan (M2a), inget siapa kamu (M2c), dan bisa buka arsip obrolan-obrolan lama kalau kamu tanya (M2b).

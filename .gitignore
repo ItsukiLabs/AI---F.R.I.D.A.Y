@@ -37,6 +37,12 @@ backend/memory/sessions/*.json
 # M2c user profile (local personal data, not source)
 backend/memory/profile/*.json
 
+# M2b long-term archive (verbatim conversation history in SQLite, not source)
+backend/memory/archive/*.db
+backend/memory/archive/*.db-journal
+backend/memory/archive/*.db-wal
+backend/memory/archive/*.db-shm
+
 # Testing / coverage
 .pytest_cache/
 .coverage
