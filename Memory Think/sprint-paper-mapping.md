@@ -33,7 +33,7 @@
 | Sprint | Modul | Kategori | Nama Kategori | Jml Paper |
 |---|---|---|---|---|
 | **1** | M0 + M1 | **#1** | Agentic AI / Tool Use | 5 |
-| **2** | M2 | **#2** | Memory Architecture | 14 |
+| **2** | M2 | **#2** | Memory Architecture | 20 |
 | **3** | M4 + M5 | **#4** + **#5** | Device Orchestration + IoT | 5 |
 | **4** | M11 ⚠️ | **#6** | Security & Permission | 4 |
 | **5** | M7–M10 | **#7** + **#8** + **#9** + **#10** | Voice Layer (4 kategori) | 5 |
@@ -86,6 +86,14 @@
 | 12 | **Overcoming Catastrophic Forgetting / EWC (2017)** | #2 | M2c | Analogi biologis — retensi berbobot-penting |
 | 13 | **Complementary Learning Systems (1995)** | #2 | M2c | Fondasi teoretis 2-lapis short/long-term |
 | 14 | **About Sleep's Role in Memory (2013)** | #2 | M2c | Analogi biologis — consolidation periodik/offline |
+| 15 | **Storage Is Not Memory (2026)** | #2 | M2b | ⭐ Retrieval-centered atas arsip verbatim, satu file SQLite tanpa infra eksternal |
+| 16 | **Mem0 (2025)** | #2 | M2b | ⭐ Pola extract→consolidate→retrieve; perbandingan RAG vs memory vs full-context |
+| 17 | **Zep / Graphiti (2025)** | #2 | M2b | ⭐ Fakta ber-validitas waktu (temporal KG); benchmark LongMemEval/DMR |
+| 18 | **HippoRAG (2025)** | #2 | M2b | Retrieval multi-hop lintas potongan; jembatan ke paper neurosains M2c |
+| 19 | **Memory OS of AI Agent (2025)** | #2 | M2a/b/c | Validasi eksternal 3-lapis short/mid/long-term; mid-term = celah M2b |
+| 20 | **Graph-based Agent Memory Survey (2026)** | #2 | M2b/M2c | Peta siklus hidup memori (extraction/storage/retrieval/evolution) |
+
+**[2026-09-09]** Kategori #2 diperluas dari 14 jadi 20 paper — user menambahkan 6 paper baru (6/6 diverifikasi cocok, 0 duplikat, 1 koreksi tahun nama file) sebagai persiapan desain M2b (long-term retrieval), yang sampai sekarang cuma punya 2 survei RAG generik sebagai rujukan. Detail di `PAPER_NOTES.md` kategori #2.
 
 **[2026-08-14]** Kategori #2 diperluas dari 3 jadi 14 paper — user menambahkan 10 paper baru (9 diverifikasi cocok + 1 duplikat dihapus) untuk mengisi gap forgetting/consolidation mechanism di M2c yang teridentifikasi saat diskusi kecukupan riset M2. Detail lengkap tiap paper + 2 perbaikan nama file (1 mismatch, 1 salah atribusi) ada di `PAPER_NOTES.md` kategori #2.
 
