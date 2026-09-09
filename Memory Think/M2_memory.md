@@ -1,6 +1,6 @@
 # M2 — Memory System
 
-> Status: **M2a (short-term/active-context) selesai termasuk robustness pass (2026-08-14).** **M2c (profile memory) v1 selesai (2026-08-18).** **M2b (long-term recall) v1 selesai (2026-09-09)** — 135 test lulus (3 skip platform-specific di Windows). Ketiga lapis M2 sekarang ada.
+> Status: **M2a (short-term/active-context) selesai termasuk robustness pass (2026-08-14).** **M2c (profile memory) v1 selesai (2026-08-18).** **M2b (long-term recall) v1 selesai (2026-09-09)**. **M2 v2 A1 (entry point tunggal `backend/orchestrator/`) selesai (2026-09-09)** — 136 test lulus (3 skip platform-specific di Windows). Ketiga lapis M2 sekarang ada dan dipakai lewat satu pintu: `Orchestrator.run_turn()`.
 > Paper rujukan: MemGPT, Generative Agents, Lost in the Middle, RAG Survey, Recursively Summarizing, 9 paper forgetting/consolidation (MemoryBank & FSFM jadi rujukan v2 M2c), dan 6 paper retrieval/long-term memory untuk M2b (Storage Is Not Memory, Mem0, Zep, HippoRAG, Memory OS, Graph-based Agent Memory survey). Detail lengkap di `Memory Think/PAPER_NOTES.md` kategori #2.
 
 ---
@@ -159,6 +159,26 @@ Lima keputusan desain teknis (semua diverifikasi empiris di SQLite venv sebelum 
 - Error-path persistence lintas store — arsip ditulis terakhir dan self-healing (idempoten by count), tapi tetap kelas gap yang sama dengan M2a/M2c; belum ada keputusan produk untuk giliran yang gagal di tengah.
 - Concurrent writers — non-goal, sama seperti M2a/M2c; SQLite locking bikin aman, bukan cepat.
 
+## M2 v2 — A1: Entry point tunggal (implementasi nyata, 2026-09-09)
+
+**Masalah yang diselesaikan:** tiap sub-milestone M2 datang dengan runner-nya sendiri di `backend/memory/runner.py` — `run_with_memory()` (M2a), `run_with_profile_memory()` (M2c), `run_with_long_term_memory()` (M2b). Ketiganya 80% kode yang sama (load sesi → susun registry per-turn → `run_agent()` → save), bedanya cuma lapisan mana yang aktif. Dua yang lama bertahan bukan karena dibutuhkan produk (F.R.I.D.A.Y selalu jalan dengan 3 lapis), tapi karena aturan "runner lama tidak disentuh" tiap sub-milestone. Begitu Sprint 3 (M4/M5 device) mulai wiring, harus jelas **satu** fungsi turn yang dipakai — dan `backend/orchestrator/` (kosong sejak Sprint 1, README: "koordinasi antar komponen: agent, tool, memory, device") memang tempatnya. Catatan di bagian M2a di atas ("kenapa `run_with_memory()` terpisah dari `run_agent()`… `backend/orchestrator/` masih kosong") sekarang **tidak berlaku lagi** — dibiarkan sebagai sejarah.
+
+**Yang dibangun:**
+- `backend/orchestrator/orchestrator.py` — class `Orchestrator(llm, registry, session_store=None, profile_store=None, archive_store=None, max_iterations=6, system=DEFAULT_SYSTEM_PROMPT)` dibangun **sekali**, lalu `run_turn(user_input, session_id) -> AgentResult` dipanggil tiap giliran. Isinya persis badan `run_with_long_term_memory()` yang dipindah: load sesi + profil (keduanya **dibaca ulang dari store tiap turn** — store = sumber kebenaran, tidak ada cache di objek), registry per-turn = salinan registry caller + 2 tool profil + `recall_memory` (registry caller tidak pernah dimutasi), `run_agent()`, lalu tulis: sesi → profil (kalau dirty) → arsip terakhir.
+- `backend/orchestrator/__init__.py` — re-export `Orchestrator`. Arah impor satu arah (`orchestrator` → `agent_core` + `memory`; tidak ada yang impor balik), jadi circular import yang dulu memaksa runner keluar dari `backend/memory/__init__.py` tidak mungkin terjadi di sini.
+- **Dihapus:** `backend/memory/runner.py` + 3 file test-nya (`test_memory_runner.py`, `test_memory_runner_profile.py`, `test_memory_runner_long_term.py`). Tidak ada caller di luar test, jadi tidak ada yang pecah.
+- `backend/memory/__init__.py` — docstring diganti: package ini cuma model + store, entry point ada di `backend.orchestrator`.
+
+**Yang sengaja TIDAK berubah:**
+- Urutan tulis dan perilaku exception (fail loud, arsip self-healing) — identik dengan M2b. Keputusan produk error-path persistence lintas store tetap terbuka → **M2 v2 A2**, bukan A1.
+- `run_agent()` tetap bebas efek samping I/O; `loop.py` tidak disentuh.
+- Tidak ada factory `Orchestrator.from_env()` yang memanggil `get_llm_client()` — belum ada caller nyata; ditambah saat wiring Sprint 3 kalau memang perlu.
+- `.gitkeep` di `backend/orchestrator/` dibiarkan (precedent: `backend/memory/.gitkeep` masih ada).
+
+**Test** (`backend/tests/test_orchestrator.py`) — 13 kasus test: 11 porting 1:1 dari 3 file runner (subjek diganti `Orchestrator`, perilaku & assertion sama), 1 gugur (`test_existing_runners_do_not_offer_recall_memory` — subjeknya tidak ada lagi), 2 baru untuk kontrak class (registry caller tidak dimutasi setelah 2 turn; store yang di-inject dipakai apa adanya lintas turn). Porting "lanjut sesi yang ada" sengaja memakai **satu objek** `Orchestrator` untuk 2 turn — sekaligus membuktikan registry per-turn dibangun ulang (register tool memori dua kali ke registry yang sama akan raise). **136 passed, 3 skipped** (135 − 13 + 14), hijau di run pertama; tidak ada file test lain yang berubah.
+
+**Belum digarap / TODO v2 (sisa setelah A1):** A2 (error-path persistence, butuh keputusan produk + kemungkinan bump `SessionRecord` 1.0.0→1.1.0 + migrasi minimal), B (polish ranking/tokenizer M2b, tool `read_conversation_around`), C (Reflexion persistence), D (decay/forgetting, encoding gate — tunggu data pemakaian nyata).
+
 ## Bahasa Awam
 
 Kalau M1 itu "orangnya yang mikir dan pakai alat", M2a itu **buku catatan kecil** yang dia pegang selama ngobrol sama kamu.
@@ -186,3 +206,5 @@ Kalau M2a itu buku catatan satu obrolan dan M2c itu kartu identitas, **M2b itu l
 3. **Yang dia dapat itu kutipan, bukan kesimpulan.** Dia bakal bilang "di obrolan sebelumnya kamu pernah bilang…", bukan "kamu itu orangnya begini". Kalau kamu mau sesuatu beneran dicatat sebagai fakta tentang kamu, itu tetap harus lewat kartu identitas (M2c) — lemari arsip nggak pernah nulis ke kartu itu sendiri.
 
 Jadi sekarang lengkap: dia inget obrolan yang lagi jalan (M2a), inget siapa kamu (M2c), dan bisa buka arsip obrolan-obrolan lama kalau kamu tanya (M2b).
+
+Dulu, buat pakai tiga-tiganya, ada tiga "pintu masuk" berbeda tergantung fitur mana yang mau diaktifkan — sisa dari cara membangunnya bertahap. Sekarang cuma ada **satu resepsionis** (`Orchestrator`): kamu ngomong ke dia, dia yang buka buku catatan, bawa kartu identitas, dan siapin kunci lemari arsip — tiap giliran, tanpa kamu perlu tahu ada tiga hal di belakangnya. Ini penting buat langkah berikutnya (Sprint 3, kontrol perangkat): apa pun yang nanti mau "ngobrol" sama F.R.I.D.A.Y cukup tahu satu pintu itu.

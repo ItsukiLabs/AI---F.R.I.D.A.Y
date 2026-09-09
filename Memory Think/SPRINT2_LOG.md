@@ -228,3 +228,30 @@
 - **File yang dibuat/diubah:** `Memory Think/SPRINT2_LOG.md` — entry ini.
 - **Alasan/keputusan:** Belum ada keputusan — user baru bertanya arah. Prioritas di atas adalah rekomendasi asisten, menunggu pilihan user.
 - **Belum dikerjakan / TODO lanjutan:** Keputusan user soal (A)/(B)/(C) — atau langsung Sprint 3.
+
+## [2026-09-09] Sesi ditutup — user pulang kerja, lanjut nanti dari diskusi M2 v2
+
+- **Apa yang dikerjakan:** User minta dicatat bahwa sesi berhenti di sini (pulang dari tempat kerja). Instruksi eksplisit: saat dia tanya lagi soal M2 v2, asisten balas dengan jawaban prioritas A/B/C/D dari entry sebelumnya, lalu **tanyakan mau mulai dari mana** — user menyebut "A1, A2 dan A3"; opsi yang ditawarkan asisten adalah A1 (satu entry point), A2 (keputusan error-path persistence), atau langsung Sprint 3 — perlu dikonfirmasi apakah "A3" = Sprint 3. Dicatat juga di memori persisten asisten (`friday_m2_v2_next_step.md`) supaya tidak bergantung pada file ini saja.
+- **File yang dibuat/diubah:** `Memory Think/SPRINT2_LOG.md` — entry ini.
+- **Alasan/keputusan:** Tidak ada keputusan teknis — murni checkpoint supaya sesi berikutnya lanjut persis dari titik ini tanpa mengulang diskusi.
+- **Belum dikerjakan / TODO lanjutan:** Entry ini **belum di-commit** (menunggu instruksi user, sesuai aturan standing). Sesi berikutnya: rekap + pilih A1 / A2 / Sprint 3.
+
+## [2026-09-09] M2 v2 A1 — satu entry point (`backend/orchestrator/`)
+
+- **Apa yang dikerjakan:**
+  1. Sesi dibuka dengan rekap posisi dari `SPRINT2_LOG.md` + memori asisten (sesuai checkpoint entry sebelumnya), lalu user memilih lewat `AskUserQuestion`: mulai dari **A1** (bukan A2 / Sprint 3 / B-C).
+  2. Eksplorasi kode (`runner.py`, `loop.py`, `tool_registry.py`, 3 file test runner, `M2_memory.md`, README) dilakukan langsung — codebase kecil, tidak perlu agent. Temuan: 3 runner 80% identik; `backend/orchestrator/` masih `.gitkeep`; tidak ada caller eksternal selain test; arah impor `orchestrator` → `agent_core`/`memory` satu arah, aman dari circular import.
+  3. 2 keputusan desain dikonfirmasi user: (a) bentuk **class `Orchestrator` + `run_turn()`** (dibangun sekali, dipanggil per turn — cocok loop chat nyata & wiring device), bukan fungsi tunggal; (b) runner lama **dihapus** dan test-nya diporting, bukan dijadikan wrapper deprecated. (Jawaban (a) tidak masuk lewat UI, dipakai opsi yang direkomendasikan dan disebut eksplisit ke user.)
+  4. Plan mode: plan ditulis & di-approve user, lalu dieksekusi penuh — lihat daftar file di bawah.
+  5. `.venv/Scripts/python.exe -m pytest backend/tests/ -q` → **136 passed, 3 skipped** (135 − 13 test runner lama + 14 test orchestrator), hijau di run pertama, regresi nol. Import sanity `from backend.orchestrator import Orchestrator; import backend.memory` bersih. `grep run_with_|memory.runner backend/` → sisa hanya di docstring historis (`orchestrator.py`, `test_orchestrator.py` menyebut asal-usulnya).
+  6. Smoke test manual dengan API key asli **tidak dijalankan** di sesi ini — logika `run_turn()` adalah pemindahan 1:1 dari `run_with_long_term_memory()` yang sudah di-smoke-test pada entry M2b; porting test menutup perilaku yang sama. Bisa dijalankan kapan saja kalau user mau.
+- **File yang dibuat/diubah:**
+  - `backend/orchestrator/orchestrator.py`, `backend/orchestrator/__init__.py`, `backend/tests/test_orchestrator.py` — baru.
+  - `backend/memory/runner.py`, `backend/tests/test_memory_runner.py`, `backend/tests/test_memory_runner_profile.py`, `backend/tests/test_memory_runner_long_term.py` — **dihapus** (`git rm`, sudah ter-stage; belum di-commit).
+  - `backend/memory/__init__.py` — docstring: entry point pindah ke `backend.orchestrator`.
+  - `Memory Think/M2_memory.md` — status, bagian baru "M2 v2 — A1", 1 paragraf tambahan "Bahasa Awam" (analogi resepsionis satu pintu). Bagian M2a/M2c/M2b **tidak ditulis ulang** — catatan lama soal runner dibiarkan sebagai sejarah, ditandai "tidak berlaku lagi" di bagian baru.
+  - `Memory Think/SPRINT2_LOG.md` — entry ini.
+- **Alasan/keputusan:** Produk selalu jalan dengan 3 lapis memori, jadi 2 runner lama tidak punya alasan produk untuk hidup — cuma sisa cara membangun bertahap. Class dipilih supaya store dibangun sekali (bukan per panggilan) dan supaya Sprint 3 punya satu objek untuk di-wiring. Hapus (bukan wrapper) dipilih karena wrapper yang setia ke perilaku lama akan memaksa `Orchestrator` punya saklar per-lapisan yang tidak dibutuhkan siapa pun. **Batas A1 dijaga ketat:** urutan tulis & semantik exception tidak diubah sama sekali (itu A2), `loop.py` tidak disentuh, tidak ada factory `from_env()` (belum ada caller).
+- **Belum dikerjakan / TODO lanjutan:**
+  - Perubahan sesi ini **belum di-commit/push** — menunggu instruksi user. Entry checkpoint sebelumnya (`Sesi ditutup`) juga masih belum di-commit; keduanya bisa masuk satu commit `refactor(orchestrator): single per-turn entry point, drop memory runners` (+ commit docs terpisah untuk entry log, mengikuti precedent).
+  - Sisa M2 v2: **A2** (error-path persistence), **B** (polish M2b), **C** (Reflexion persistence), **D** (ditunda sampai ada data pemakaian). Atau langsung Sprint 3 — sekarang sudah ada satu pintu untuk di-wiring.
