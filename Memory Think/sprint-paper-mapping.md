@@ -34,7 +34,7 @@
 |---|---|---|---|---|
 | **1** | M0 + M1 | **#1** | Agentic AI / Tool Use | 5 |
 | **2** | M2 | **#2** | Memory Architecture | 20 |
-| **3** | M4 + M5 | **#4** + **#5** | Device Orchestration + IoT | 5 |
+| **3** | M4 + M5 | **#4** + **#5** | Device Orchestration + IoT | 10 |
 | **4** | M11 ⚠️ | **#6** | Security & Permission | 4 |
 | **5** | M7–M10 | **#7** + **#8** + **#9** + **#10** | Voice Layer (4 kategori) | 5 |
 | **6** | M3 | **#3** | Task Planning | 3 |
@@ -104,19 +104,29 @@
 **Kategori: #4 + #5** — Device Orchestration + IoT Integration
 **Modul:** M4 (Tool Registry) + M5 (Device Abstraction Layer)
 
-| # | Paper | Kategori | Modul | Fungsi di Modul Ini |
-|---|---|---|---|---|
-| 1 | **MCP-Zero** ⭐ | #4 | M4 | Agent minta tool sendiri saat butuh |
-| 2 | **ScaleMCP** | #4 | M4 | Auto-sync tool baru tanpa restart |
-| 3 | **Enhancing IoT with LLM** ⭐ | #5 | M5 | Blueprint: Home Assistant + MQTT |
-| 4 | **HearthNet** ⭐ | #5 | M5 | Adapter tipis, edge orchestration |
-| 5 | **Agentic IoT Survey** | #5 | M5 | IoT vs AIoT vs Agentic IoT |
-| — | *Tool-to-Agent Retrieval* | #4 | M4 | Opsional — routing saat tool ratusan |
+| # | Paper | Kategori | Modul | Status | Fungsi di Modul Ini |
+|---|---|---|---|---|---|
+| 1 | **MCP-Zero** ⭐ | #4 | M4 | ✅ Punya | Agent minta tool sendiri saat butuh (active request → hierarchical routing → iterasi) |
+| 2 | **ScaleMCP** | #4 | M4 | ✅ Punya | Auto-sync tool via hash kontrak tanpa restart; retrieval-tool; contoh kalimat pemicu di dokumen tool |
+| 3 | **Enhancing IoT with LLM** ⭐ | #5 | M5 | ✅ Punya | Blueprint: Home Assistant + MQTT (telemetri; aktuasi masih future work) |
+| 4 | **HearthNet** ⭐ | #5 | M5 | ✅ Punya (di `M13/`) | Adapter tipis, edge orchestration, actuation lease → M11 |
+| 5 | **Agentic IoT Survey** | #5 | M5 | ✅ Punya | IoT vs AIoT vs Agentic IoT |
+| 6 | **SAGE** ⭐ | #5 | M5 | ✅ Punya | Cetak biru aktuasi: lazy API doc per device, exception → observasi, device disambiguation, benchmark tanpa hardware |
+| 7 | **Sasha** | #5 | M5 | ✅ Punya | Rubrik evaluasi: 7 mode kegagalan, Clarifying → Filtering → Planning, studi lapangan |
+| 8 | **EasyTool** | #4 | M4/M0 | ✅ Punya | Standar isi deskripsi tool: ringkas + ≥1 contoh skenario ber-parameter |
+| 9 | **ToolLLM** | #4 | M4/M3 | ✅ Punya | `Finish by Giving Up`, kompresi respons tool, retriever yang mengoreksi pilihan; DFSDT → M3 |
+| — | *Tool-to-Agent Retrieval* | #4 | M4 | ✅ Punya | Opsional — indeks gabungan device↔tool; routing saat tool ratusan (→ M14) |
 
-**Link download:**
+**[2026-09-11]** Sprint 3 diperluas dari 5 jadi 10 paper — 3 paper M4 yang sebelumnya cuma link (MCP-Zero, ScaleMCP, Tool-to-Agent) diunduh user, plus 4 tambahan untuk menutup dua celah tematik: **aktuasi smart home oleh LLM** (SAGE, Sasha → `M5/`) dan **kualitas deskripsi + seleksi tool skala besar** (EasyTool, ToolLLM → `M4/`). 7/7 diverifikasi cocok (pdftotext + md5), semua entry berstatus Teks penuh di `PAPER_NOTES.md` #4/#5. Folder `M4/` sekarang berisi 5 PDF (sebelumnya kosong setelah 2 paper voice assistant dipindah 2026-09-10).
+
+**Link download (sudah diunduh semua per 2026-09-11):**
 - MCP-Zero: `arxiv.org/pdf/2506.01056`
-- ScaleMCP: `arxiv.org/abs/2505.06416`
+- ScaleMCP: `arxiv.org/pdf/2505.06416`
 - Tool-to-Agent: `arxiv.org/pdf/2511.01854`
+- EasyTool: `arxiv.org/pdf/2401.06201`
+- ToolLLM: `arxiv.org/pdf/2307.16789`
+- SAGE: `arxiv.org/pdf/2311.00772`
+- Sasha: `arxiv.org/pdf/2305.09802`
 
 ---
 
