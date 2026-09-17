@@ -36,13 +36,13 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import sqlite3
 import stat
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
+from backend.dal.fts import TOKENIZER, fts_query, tokens
 from backend.memory.archive_errors import (
     ArchiveError,
     ArchiveLoadError,
@@ -56,13 +56,7 @@ DEFAULT_ARCHIVE_DIR = Path(__file__).parent / "archive"
 
 _ARCHIVE_FILENAME = "memory.db"
 
-# Word tokens as FTS5's unicode61 tokenizer would see them. Anything else in a
-# query (quotes, parentheses, '*', '-', operator keywords) is syntax to FTS5
-# and can never reach it through this pattern — each token is then quoted as
-# a phrase, so even "AND"/"OR"/"NOT" become plain literals.
-_TOKEN_PATTERN = re.compile(r"[^\W_]+")
-
-_SCHEMA_DDL = """
+_SCHEMA_DDL = f"""
 CREATE TABLE meta (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -92,7 +86,7 @@ CREATE VIRTUAL TABLE turns_fts USING fts5(
     text,
     content='turns',
     content_rowid='id',
-    tokenize='unicode61 remove_diacritics 2'
+    tokenize='{TOKENIZER}'
 );
 """
 
@@ -154,16 +148,6 @@ def _render_text(content: Any) -> str:
         else:
             parts.append(json.dumps(block, ensure_ascii=False))
     return "\n".join(parts)
-
-
-def _tokens(query: str) -> list[str]:
-    return _TOKEN_PATTERN.findall(query)
-
-
-def _fts_query(tokens: list[str], operator: str) -> str:
-    # Tokens can't contain '"' (see _TOKEN_PATTERN) — doubling is defensive.
-    quoted = ['"' + token.replace('"', '""') + '"' for token in tokens]
-    return operator.join(quoted)
 
 
 class ArchiveStore:
@@ -311,8 +295,8 @@ class ArchiveStore:
         in-context window out of its recall results, while its compacted
         (``archived_turns``) part stays searchable.
         """
-        tokens = _tokens(query)
-        if not tokens:
+        query_tokens = tokens(query)
+        if not query_tokens:
             return []
 
         exclude_clause = ""
@@ -324,11 +308,11 @@ class ArchiveStore:
 
         with self._connect() as conn:
             rows = conn.execute(
-                sql, (_fts_query(tokens, " "), *exclude_params, limit)
+                sql, (fts_query(query_tokens, " "), *exclude_params, limit)
             ).fetchall()
-            if not rows and len(tokens) > 1:
+            if not rows and len(query_tokens) > 1:
                 rows = conn.execute(
-                    sql, (_fts_query(tokens, " OR "), *exclude_params, limit)
+                    sql, (fts_query(query_tokens, " OR "), *exclude_params, limit)
                 ).fetchall()
 
         return [

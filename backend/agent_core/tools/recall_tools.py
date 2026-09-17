@@ -24,7 +24,7 @@ from typing import Any, Callable
 from backend.agent_core.config import get_memory_recall_default_limit
 from backend.memory.archive_store import ArchiveStore
 from backend.memory.session import Session
-from backend.schemas import PermissionTier, ToolAnnotations, ToolContract
+from backend.schemas import PermissionTier, ToolAnnotations, ToolContract, ToolExample
 
 RECALL_MAX_TEXT_CHARS = 600
 RECALL_MAX_LIMIT = 20
@@ -32,6 +32,17 @@ RECALL_MAX_LIMIT = 20
 RECALL_MEMORY_CONTRACT = ToolContract(
     name="recall_memory",
     version="1.0.0",
+    domain="memory",
+    examples=[
+        ToolExample(
+            scenario="User: 'Minggu lalu kita bahas resep apa ya?'",
+            arguments={"query": "resep"},
+        ),
+        ToolExample(
+            scenario="User asks what they said earlier about their trip to Bali",
+            arguments={"query": "Bali trip", "limit": 3},
+        ),
+    ],
     description=(
         "Search F.R.I.D.A.Y's archive of past conversation turns across ALL "
         "previous sessions, by keyword. Results are VERBATIM QUOTES of what "

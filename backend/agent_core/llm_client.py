@@ -8,6 +8,7 @@ not the SDK directly, so swapping providers later doesn't touch the loop.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -53,15 +54,31 @@ class LLMClient(Protocol):
 def tool_contract_to_anthropic_tool(contract: ToolContract) -> dict[str, Any]:
     """Convert a ToolContract (M0) into Anthropic's Messages API tool format.
 
-    1:1 conversion — M0 modeled ``input_schema`` on the MCP tool primitive on
+    ``input_schema`` converts 1:1 — M0 modeled it on the MCP tool primitive on
     purpose (see PAPER_NOTES.md category #1), and Anthropic's tool
     ``input_schema`` is the same JSON Schema shape.
+
+    Examples (contract 1.1.0) have no slot in the provider's tool format, so
+    they are appended to the description. That is where they do their job:
+    EasyTool's finding is that the model fills arguments correctly far more
+    often when it sees a concrete scenario with arguments next to the schema.
+    A contract without examples converts exactly as before.
     """
     return {
         "name": contract.name,
-        "description": contract.description,
+        "description": _description_with_examples(contract),
         "input_schema": contract.input_schema,
     }
+
+
+def _description_with_examples(contract: ToolContract) -> str:
+    if not contract.examples:
+        return contract.description
+    lines = [contract.description, "", "Examples:"]
+    for example in contract.examples:
+        arguments = json.dumps(example.arguments, ensure_ascii=False, sort_keys=True)
+        lines.append(f"- {example.scenario} -> {arguments}")
+    return "\n".join(lines)
 
 
 class AnthropicLLMClient:

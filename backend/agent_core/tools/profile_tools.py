@@ -16,11 +16,29 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from backend.memory.profile import Profile
-from backend.schemas import PermissionTier, ToolAnnotations, ToolContract
+from backend.schemas import PermissionTier, ToolAnnotations, ToolContract, ToolExample
 
 REMEMBER_USER_FACT_CONTRACT = ToolContract(
     name="remember_user_fact",
     version="1.0.0",
+    domain="memory",
+    examples=[
+        ToolExample(
+            scenario="User: 'Aku alergi udang, inget ya'",
+            arguments={"fact": "Aku alergi udang", "category": "health", "supersedes": None},
+        ),
+        ToolExample(
+            scenario=(
+                "User: 'Sekarang aku tinggal di Bandung, bukan Jakarta lagi', "
+                "and known fact fact_0003 says they live in Jakarta"
+            ),
+            arguments={
+                "fact": "Sekarang aku tinggal di Bandung",
+                "category": "location",
+                "supersedes": "fact_0003",
+            },
+        ),
+    ],
     description=(
         "Save a fact about the user that should be remembered across every "
         "future conversation, not just this one. Only call this when the "
@@ -80,6 +98,13 @@ REMEMBER_USER_FACT_CONTRACT = ToolContract(
 FORGET_USER_FACT_CONTRACT = ToolContract(
     name="forget_user_fact",
     version="1.0.0",
+    domain="memory",
+    examples=[
+        ToolExample(
+            scenario="User: 'Lupain aja soal alergi udang tadi' (known fact fact_0007)",
+            arguments={"fact_id": "fact_0007", "reason": "User asked to forget it"},
+        ),
+    ],
     description=(
         "Delete a previously remembered fact about the user. Only call this "
         "when the user explicitly asks to forget/remove something — never "

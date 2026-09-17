@@ -8,11 +8,16 @@ against a real (if trivial) capability instead of a mock.
 from datetime import datetime, timezone
 from typing import Any
 
-from backend.schemas import PermissionTier, ToolAnnotations, ToolContract
+from backend.schemas import PermissionTier, ToolAnnotations, ToolContract, ToolExample
 
 TIME_TOOL_CONTRACT = ToolContract(
     name="get_current_time",
     version="1.0.0",
+    domain="time",
+    examples=[
+        ToolExample(scenario="User: 'Jam berapa sekarang?'", arguments={}),
+        ToolExample(scenario="User asks what today's date is", arguments={}),
+    ],
     description="Get the current date and time in UTC, ISO 8601 format.",
     input_schema={
         "type": "object",

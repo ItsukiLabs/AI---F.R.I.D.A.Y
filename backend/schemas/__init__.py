@@ -9,7 +9,12 @@ from backend.schemas.profile_contract import (
     ProfileFact,
     ProfileRecord,
 )
-from backend.schemas.tool_contract import PermissionTier, ToolAnnotations, ToolContract
+from backend.schemas.tool_contract import (
+    PermissionTier,
+    ToolAnnotations,
+    ToolContract,
+    ToolExample,
+)
 from backend.schemas.versioning import CONTRACT_VERSION
 
 __all__ = [
@@ -25,4 +30,5 @@ __all__ = [
     "SessionRecord",
     "ToolAnnotations",
     "ToolContract",
+    "ToolExample",
 ]

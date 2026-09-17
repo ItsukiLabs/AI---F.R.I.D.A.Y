@@ -44,3 +44,7 @@ Bayangkan M0 itu seperti **formulir pendaftaran alat baru**. Setiap kali ada "al
 - Apakah alat ini cuma "lihat-lihat" doang atau bisa "bikin perubahan beneran" (misal ngunci pintu — itu beda level bahaya sama sekadar baca suhu ruangan)
 
 Kalau formulirnya nggak lengkap atau ngasal, alat itu **ditolak, nggak boleh masuk sistem**. Ini penting supaya nanti pas F.R.I.D.A.Y punya puluhan/ratusan alat, semuanya tetap rapi dan bisa dipercaya — dan kalau ada alat yang "berbahaya" (bisa merusak/nggak bisa dibatalkan), itu sudah ketauan dari awal, bukan pas kejadian.
+
+---
+
+**[2026-09-11] Kontrak naik ke 1.1.0 (M4, Sprint 3).** Tiga tambahan aditif, kontrak lama tetap valid: `domain` (pengelompokan ala server MCP-Zero, default `"general"`), `examples: list[ToolExample]` (skenario + argumen, divalidasi ke `input_schema` saat kontrak dibuat, ditampilkan ke LLM di deskripsi tool dan diindeks katalog), dan `content_hash` (SHA-256 semua field kecuali nomor versi, dipakai `ToolCatalog.sync` untuk mendeteksi perubahan isi). Aturan snake_case dipindah ke `validate_identifier()` publik supaya dipakai juga untuk domain dan provider katalog. Detail dan alasan di `Memory Think/M4_tool_registry.md`.

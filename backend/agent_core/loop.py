@@ -35,7 +35,9 @@ from backend.memory.session import Session
 DEFAULT_SYSTEM_PROMPT = (
     "You are F.R.I.D.A.Y, a personal AI assistant. Use the available tools "
     "when they would genuinely help answer the request, and give a direct "
-    "final answer once you have what you need."
+    "final answer once you have what you need. If no tool can do what the "
+    "user asked, say so plainly: never claim to have done something you "
+    "didn't, and never use an unrelated tool as a stand-in."
 )
 
 
@@ -101,9 +103,12 @@ def run_agent(
     else:
         messages = [{"role": "user", "content": user_input}]
 
-    tools = registry.to_llm_tools()
-
     for iteration in range(1, max_iterations + 1):
+        # Re-read every iteration: find_tools (M4) binds catalog tools into
+        # this registry mid-turn, and they must be visible on the very next
+        # call. A turn's registry only ever grows, so every earlier tool_use
+        # block in the history still names an installed tool.
+        tools = registry.to_llm_tools()
         llm_input = session.to_llm_messages() if session is not None else messages
         effective_system = system
         if profile is not None:
