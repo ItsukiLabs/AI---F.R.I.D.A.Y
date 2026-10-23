@@ -77,8 +77,8 @@ Bayangkan F.R.I.D.A.Y bekerja di **meja kerja** yang ada di depan **gudang alat*
 
 ## Belum digarap / TODO lanjutan
 
-- **Keputusan A2 (checkpoint wajib).** Diputuskan saat tool device mock pertama dibuat, dengan kasus konkret "lampu nyala tapi turn gagal tersimpan". M4 tidak menyentuh urutan tulis orchestrator.
-- **M5:** adapter memanggil `catalog.sync("<adapter_id>", tools)` dan `describe_domain(...)`. Tool device mock pertama pakai pola benchmark SAGE (state awal → perintah → cek state akhir, tanpa hardware).
+- **Keputusan A2 (checkpoint wajib).** Diputuskan saat tool device mock pertama dibuat, dengan kasus konkret "lampu nyala tapi turn gagal tersimpan". M4 tidak menyentuh urutan tulis orchestrator. **[2026-09-17]** Mock sudah ada; trace 9 skenario + 5 pertanyaan menunggu jawaban user di `M2_memory.md` bagian A2.
+- **M5:** adapter memanggil `catalog.sync("<adapter_id>", tools)` dan `describe_domain(...)`. Tool device mock pertama pakai pola benchmark SAGE (state awal → perintah → cek state akhir, tanpa hardware). **[2026-09-17] Selesai untuk mock:** `backend/devices/mock_home.py`, lihat `M5_device_layer.md`.
 - **M11:** penegakan `permission_tier` saat eksekusi, minimal konfirmasi untuk `CRITICAL`. Saat ini `find_tools` hanya melaporkan tier.
 - **`find_tools` memakan satu iterasi.** `max_iterations` default 6; tugas device multi-langkah bisa mendekati batas. Pantau saat pemakaian nyata.
 - **Tool yang di-load tidak bertahan lintas turn.** LLM harus mencari lagi di turn berikutnya. Kalau ini jadi masalah biaya/latensi, rujukan: MemTool (arXiv 2507.21428).

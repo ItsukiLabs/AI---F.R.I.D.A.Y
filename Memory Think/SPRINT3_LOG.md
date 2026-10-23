@@ -150,3 +150,94 @@
   - **Commit** perubahan M4 — menunggu instruksi user (aturan standing).
   - Smoke test dengan API key asli belum dijalankan (opsional di rencana; memakai kredit API user).
   - Langkah berikutnya Sprint 3: tool device **mock** pertama (pola benchmark SAGE, adapter `sync` ke katalog) → **keputusan A2** → M5 adapter nyata. TODO lain (M11 gate `CRITICAL`, `find_tools` memakan satu iterasi, tool tidak bertahan lintas turn, embedding kalau ratusan tool, belum ada entry point produksi) tercatat di `M4_tool_registry.md`.
+
+## [2026-09-17] Commit M4, tool device mock pertama (M5), trace A2 disusun ulang sebagai test
+
+- **Apa yang dikerjakan:**
+  1. Sesi dibuka dengan rekap. Ditemukan ketidakcocokan: memori asisten mencatat sesi 2026-09-11 lanjutan (tracing ulang semua modul, koreksi catatan M0/M1/M2, smoke test API asli, tabel trace A2 9 skenario), tapi **hasilnya tidak ada di file**: `M2_memory.md` terakhir diubah 9 Sep tanpa tabel A2, `M1_agent_core.md` masih versi 13 Agu, log ini tidak punya entry-nya. Kemungkinan sesi itu tidak sempat menulis ke disk. Diberitahukan ke user.
+  2. User: "lanjutkan langkah berikutnya". Test dijalankan (210 passed, 3 skipped), lalu perubahan M4 di-commit sebagai `d54481b` (`feat(registry): M4 Tool Registry v1 — catalog, find_tools, hash sync, contract 1.1.0`, 27 file) dan di-push ke `origin/master`.
+  3. **Tool device mock pertama** (`backend/devices/`, paket baru untuk M5): `MockHome` (state lampu + AC di memori, `diff()` ala benchmark SAGE, injeksi kegagalan `OFFLINE` dan `LOST_ACK`), `MockHomeAdapter.sync_into(catalog)` dengan 5 tool di domain `home`. Detail di `M5_device_layer.md`.
+  4. **Trace A2 disusun ulang dari nol sebagai characterization test** (`backend/tests/test_a2_trace.py`, 9 skenario), tabel + pola + opsi (a)/(b)/(c) + rekomendasi + 5 pertanyaan di `M2_memory.md` bagian "M2 v2 — A2: trace konkret". Nomor skenario tidak sama dengan versi 2026-09-11 yang hilang.
+  5. Test: **238 passed, 3 skipped** (sebelumnya 210). 28 kasus baru di 2 file baru; file test lama tidak diubah.
+- **File yang dibuat/diubah:**
+  - Baru: `backend/devices/{__init__,mock_home}.py`, `backend/tests/{test_mock_home,test_a2_trace}.py`, `Memory Think/M5_device_layer.md`.
+  - Diubah: `Memory Think/M2_memory.md` (bagian A2 baru), `Memory Think/M4_tool_registry.md` (anotasi 2 TODO), `Memory Think/SPRINT3_LOG.md` (entry ini).
+- **Alasan/keputusan:**
+  - Trace dibuat sebagai test, bukan tabel saja, supaya tidak bisa hilang atau basi lagi: kalau perilaku berubah, test gagal.
+  - Temuan utama trace: lima skenario tidak konsisten (S3 lost ack, S4 LLM gagal setelah aksi, S5 simpan sesi gagal, S6 simpan profil gagal, S8 iterasi habis), satu konsisten tapi caller menerima exception (S7 arsip gagal). Dunia fisik tidak bisa di-rollback, jadi A2 harus berbentuk "catat yang sudah terjadi" + "cek dunia saat ragu".
+  - Kekurangan yang tidak ditutup mock: S8 menghasilkan dua pesan `user` berturut-turut ke API; menurut dokumentasi Messages API keduanya digabung, **belum diverifikasi dengan API asli**.
+  - Tidak ada perubahan pada orchestrator, loop, atau urutan tulis: **A2 belum diputuskan**.
+- **Belum dikerjakan / TODO lanjutan:**
+  - **Keputusan A2 oleh user** (5 pertanyaan di `M2_memory.md`). Rekomendasi asisten: (a) simpan turn terputus + teks fallback iterasi habis, (c) adapter membaca ulang state setelah perintah tidak terkonfirmasi, (b) log aksi durable ditunda ke M11.
+  - Dua TODO M4 yang juga menunggu keputusan: pesan saat model memanggil tool yang ada di katalog tapi belum dimuat (temuan smoke 2026-09-11, hanya ada di memori asisten), dan apakah tool yang dimuat bertahan lintas turn.
+  - Pekerjaan sesi 2026-09-11 yang hilang (koreksi catatan M0/M1/M2, smoke test API asli) belum diulang.
+  - Commit perubahan sesi ini: menunggu instruksi user.
+
+## [2026-10-23] Jawaban A2 dari user: Q1 + Q2 diputuskan, Q3-Q5 minta penjelasan
+
+- **Apa yang dikerjakan:** Sesi dibuka setelah jeda ~5 minggu dengan rekap posisi. User menjawab: **Q1 = ya** (turn terputus setelah aksi disimpan sebagian dengan penanda; teks fallback iterasi habis ikut disimpan), **Q2 = ya** (adapter membaca ulang state device setelah perintah tidak terkonfirmasi). Q3 (log aksi durable vs M11), Q4 (arsip gagal: raise atau dicatat), Q5 (profil sebelum sesi) — user minta penjelasan dulu.
+- **Koreksi tabel trace:** di S5 (dan S6) caller **tidak** menerima jawaban model; `run_turn` melempar exception dari `save`, jadi teks "Lampu sudah nyala." hanya dibuat model, tidak sampai ke user lewat API saat ini. Klaim "user sudah diberi tahu berhasil" di tabel `M2_memory.md` hanya benar kalau nanti ada UI streaming.
+- **Penjelasan yang diberikan (ringkas):** Q3 — log aksi = file terpisah yang ditulis saat aksi, jadi tetap ada walau simpan sesi gagal; tumpang tindih dengan audit log M11. Q4 — masalahnya bukan "mencatat" tapi "melempar": raise membuang jawaban untuk turn yang sudah sukses dan mendorong user mengulang perintah (aksi device bisa jalan dua kali); usulan: kembalikan jawaban + catat + tanda peringatan. Q5 — urutan sesi→profil dipertahankan saat refactor supaya perilaku tidak berubah, keputusannya memang ditunda ke A2.
+- **File yang dibuat/diubah:** `Memory Think/SPRINT3_LOG.md` — entry ini.
+- **Belum dikerjakan / TODO lanjutan:** jawaban user untuk Q3-Q5 → implementasi A2 → update test trace → commit (menunggu instruksi).
+
+## [2026-10-23] Keputusan A2 final + implementasi
+
+- **Apa yang dikerjakan:** User menjawab Q3 = tunda ke M11, Q4 = setuju (dicatat + kembalikan jawaban + tanda peringatan), Q5 = ubah urutan. Bersama Q1/Q2 (ya, ya), A2 diimplementasi:
+  1. `backend/agent_core/loop.py`: `AgentResult.warnings`; teks fallback iterasi habis disimpan sebagai pesan assistant (S8); satu kalimat di `DEFAULT_SYSTEM_PROMPT` agar status device dibaca dengan tool, bukan dari riwayat (S3).
+  2. `backend/orchestrator/orchestrator.py`: urutan tulis profil → sesi → arsip (S6); arsip gagal → `logging.warning` + `AgentResult.warnings`, tidak di-raise (S7); `run_agent` raise setelah turn dimulai → penanda `[Turn interrupted ...]`, simpan semua, raise ulang exception asli (S4). Deteksi "turn sudah dimulai" memakai identitas objek pesan terakhir (kompaksi tidak memutasi sebelum panggilan LLM-nya sukses dan mempertahankan objek pesan yang tersisa).
+  3. `backend/devices/mock_home.py`: `MockHomeAdapter._command` membaca ulang state setelah `DeviceError` (S3).
+  4. Test: `test_a2_trace.py` ditulis ulang untuk skenario yang berubah + 5 kasus baru; `test_orchestrator.py::test_ingest_failure_raises_*` diubah jadi `..._is_a_warning_...` (perilaku lama yang memang sengaja diubah oleh keputusan 4). **243 passed, 3 skipped.**
+- **File yang dibuat/diubah:** `backend/agent_core/loop.py`, `backend/orchestrator/orchestrator.py`, `backend/devices/mock_home.py`, `backend/tests/test_a2_trace.py`, `backend/tests/test_orchestrator.py`, `Memory Think/M2_memory.md` (tabel keputusan A2), `Memory Think/M5_device_layer.md`, entry ini.
+- **Alasan/keputusan:** lihat tabel "Keputusan A2" di `M2_memory.md`. Satu-satunya test lama yang diubah adalah yang merekam "arsip gagal = raise", karena keputusan 4 sengaja membalik perilaku itu.
+- **Belum dikerjakan / TODO lanjutan:**
+  - Commit (menunggu instruksi user): perubahan 2026-09-17 (mock M5, trace A2) + implementasi A2 ini.
+  - S5 tetap celah yang diketahui sampai audit log M11.
+  - 2 TODO M4 (tool katalog yang belum dimuat, tool bertahan lintas turn), koreksi catatan M0/M1/M2 dan smoke test API asli yang hilang dari sesi 2026-09-11.
+  - Langkah berikutnya: M5 adapter nyata.
+
+## [2026-10-23] Perbaikan 2 celah kecil A2 (poin 9 rekap kekurangan)
+
+- **Apa yang dikerjakan:** User minta poin 9 dari rekap kekurangan diperbaiki dan dites.
+  1. **Profil gagal tidak lagi menghilangkan turn.** `Orchestrator._persist`: kalau `ProfileStore.save` gagal, catatan koreksi (`[Saving the user profile failed ...: facts ... were NOT saved ...]`) ditempel ke pesan assistant terakhir, sesi tetap disimpan, exception di-raise (kegagalan simpan sesi saat itu ditempel sebagai note). Helper baru `_append_assistant_note` dipakai juga untuk penanda "turn interrupted".
+  2. **Deteksi "turn sudah dimulai" (identitas objek pesan) dihapus.** Mutation test: mengganti pengecekan itu dengan `True` tidak menggagalkan test apa pun, karena setelah A2 setiap turn tersimpan berakhir dengan assistant; cukup cek role pesan terakhir. Kode jadi lebih sederhana dan tidak bergantung pada detail implementasi kompaksi.
+  3. Test baru di `test_a2_trace.py`: S6 ditulis ulang (sesi tersimpan + koreksi), S6 aksi device + profil gagal (lampu tetap tercatat), S6 turn terputus + profil gagal (dua catatan, note di exception), kompaksi gagal (tanpa penanda, sesi tidak berubah), kompaksi sukses lalu LLM gagal (penanda ada, ringkasan tersimpan). Mutation check kedua: menghapus pengecekan role → test kompaksi gagal, sesuai harapan.
+  4. **247 passed, 3 skipped** (sebelumnya 243).
+- **File yang dibuat/diubah:** `backend/orchestrator/orchestrator.py`, `backend/tests/test_a2_trace.py`, `Memory Think/M2_memory.md`, entry ini.
+- **Alasan/keputusan:** Koreksi di sesi tetap memenuhi tujuan keputusan 5 (tidak ada klaim palsu yang bertahan) sambil tidak membuang catatan aksi fisik. Urutan profil → sesi → arsip tidak berubah.
+- **Belum dikerjakan / TODO lanjutan:** commit (menunggu instruksi user); sisa kekurangan non-modul dari rekap (entry point CLI/server, smoke test API asli, 2 TODO M4, catatan M0/M1/M2 basi, M2 v2 B/D); M5 adapter nyata.
+
+## [2026-10-23] Diskusi: apa yang didaftarkan ke registry saat memakai MQTT / device pihak ketiga
+
+- **Apa yang dikerjakan:** User bertanya apakah F.R.I.D.A.Y nanti akan meminta IP publisher + alamat queue MQTT saat pendaftaran, dan bagaimana kalau memakai beberapa device pihak ketiga. Diskusi saja, tidak ada perubahan kode.
+- **Jawaban asisten (belum keputusan):**
+  - Registry M4 mendaftarkan **kemampuan** (tool + kontrak), bukan detail koneksi. Tiga lapis: (1) konfigurasi koneksi adapter (host/port broker, kredensial, TLS) ditulis user sekali di config/.env, tidak ditanyakan lewat obrolan dan tidak pernah masuk konteks LLM; (2) daftar device (id, nama, ruangan, jenis, topic) didapat adapter lewat discovery (mis. topic `homeassistant/.../config`, Zigbee2MQTT) atau file daftar; (3) tool per jenis aksi dengan `device_id` enum (pola `MockHomeAdapter`) yang di-`sync` ke katalog.
+  - Alasan tidak lewat obrolan: M2 menyimpan percakapan verbatim (sesi + arsip FTS) dan mengirimnya ke API LLM, jadi kredensial akan tersebar; menambah device lewat obrolan bisa jadi fitur nanti di bawah izin M11.
+  - Koreksi istilah: MQTT punya **broker** dan **topic**, bukan IP publisher / queue address.
+  - Device pihak ketiga: satu adapter = satu `provider` di katalog (sudah didukung `catalog.sync(provider, tools)`). Rekomendasi: Home Assistant sebagai hub (satu adapter untuk banyak merek, ada mode demo tanpa hardware), MQTT langsung kalau device DIY.
+- **File yang dibuat/diubah:** `Memory Think/SPRINT3_LOG.md` — entry ini.
+- **Belum dikerjakan / TODO lanjutan:** menunggu user memilih jalur device (HA / MQTT langsung / per-vendor) dan menyebut device yang dimiliki → desain adapter M5 nyata.
+
+## [2026-10-23] Diskusi lanjutan: gateway/hub sendiri untuk semua provider (MQTT, LoRa, vendor)
+
+- **Apa yang dikerjakan:** User mengusulkan membuat service/proyek terpisah yang memegang semua koneksi provider (home service, MQTT, LoRa) dan mengekspos satu API; F.R.I.D.A.Y cukup menyimpan akses ke API itu, supaya F.R.I.D.A.Y lebih ringan. Diskusi saja.
+- **Jawaban asisten (belum keputusan):**
+  - Pola benar: hub/gateway terpisah, F.R.I.D.A.Y hanya punya satu adapter + satu token (di config/.env, bukan lewat obrolan). Home Assistant sudah merupakan gateway seperti itu; membangun sendiri hanya layak untuk bagian yang tidak tertangani HA (mis. protokol LoRa custom), bisa sebagai bridge kecil ke MQTT → HA.
+  - Klaim "lebih ringan" dikoreksi: beban utama F.R.I.D.A.Y adalah panggilan LLM, bukan I/O device. Keuntungan nyata gateway: koneksi 24/7 + cache state + retry di luar proses F.R.I.D.A.Y, kredensial provider tidak di F.R.I.D.A.Y, kode F.R.I.D.A.Y tetap satu adapter, F.R.I.D.A.Y bisa restart tanpa memutus device.
+  - Opsi bentuk API gateway: REST/WebSocket, atau **MCP server** (cocok dengan desain M4; HA punya integrasi MCP Server — perlu dicek versinya saat desain).
+  - LoRa: latensi tinggi dan downlink kelas A hanya setelah uplink, jadi gateway harus melaporkan state "pending" — terkait keputusan A2 no. 2 (baca ulang state).
+- **File yang dibuat/diubah:** `Memory Think/SPRINT3_LOG.md` — entry ini.
+- **Belum dikerjakan / TODO lanjutan:** user memilih: HA sebagai gateway / gateway sendiri / hibrida; daftar device yang dimiliki (termasuk apakah LoRa sudah ada).
+
+## [2026-10-23] Keputusan user: adapter device nyata DITUNDA — jadi PR untuk versi F.R.I.D.A.Y berikutnya
+
+- **Apa yang dikerjakan:** User menyatakan banyak device belum tersedia dan proyek ini masih tahap percobaan, jadi model koneksi ke perangkat IoT belum bisa dipastikan. Semua pengujian device di Sprint 3 tetap memakai simulasi (mock). Bagian yang butuh perangkat nyata dicatat sebagai **PR user** untuk versi F.R.I.D.A.Y yang lebih matang.
+- **PR (pekerjaan rumah) untuk versi berikutnya — butuh perangkat nyata:**
+  1. Pilih jalur gateway: Home Assistant sebagai hub (rekomendasi asisten) / hibrida HA + bridge sendiri (mis. LoRa custom) / gateway buatan sendiri. Lihat 2 entry diskusi sebelumnya hari ini.
+  2. Inventaris device yang dimiliki (merek, protokol: Wi-Fi/Zigbee/MQTT/LoRa, cloud atau lokal).
+  3. Adapter M5 nyata ke gateway terpilih: satu `provider` di katalog, kredensial di config/.env (tidak lewat obrolan), discovery device otomatis, operasi baca state per device (syarat keputusan A2 no. 2).
+  4. State "pending" untuk device lambat (LoRa kelas A) — perintah tertunda bukan gagal.
+  5. Kompresi respons state device nyata sebelum masuk konteks LLM (ToolLLM).
+  6. Benchmark tugas ala SAGE dengan device nyata / demo HA, dinilai 7 mode kegagalan Sasha (irisan M16).
+- **Alasan/keputusan:** Tanpa perangkat dan pilihan gateway, adapter nyata hanya tebakan. Sprint 3 ditutup dengan yang bisa dikerjakan tanpa hardware (daftar dibahas di chat 2026-10-23).
+- **File yang dibuat/diubah:** `Memory Think/SPRINT3_LOG.md` — entry ini.

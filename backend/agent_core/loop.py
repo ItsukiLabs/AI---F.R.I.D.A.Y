@@ -16,7 +16,7 @@ M2 (Memory), not M1.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import jsonschema
@@ -37,7 +37,10 @@ DEFAULT_SYSTEM_PROMPT = (
     "when they would genuinely help answer the request, and give a direct "
     "final answer once you have what you need. If no tool can do what the "
     "user asked, say so plainly: never claim to have done something you "
-    "didn't, and never use an unrelated tool as a stand-in."
+    "didn't, and never use an unrelated tool as a stand-in. Earlier messages "
+    "can be out of date about the physical world: when asked about a "
+    "device's current state, read it with a tool instead of answering from "
+    "the conversation history."
 )
 
 
@@ -46,6 +49,9 @@ class AgentResult:
     text: str
     exceeded_max_iterations: bool = False
     iterations: int = 0
+    # Non-fatal problems the caller should know about (e.g. the archive could
+    # not be updated after an otherwise successful turn; M2 v2 A2, S7).
+    warnings: list[str] = field(default_factory=list)
 
 
 def _assistant_message(response: LLMResponse) -> dict[str, Any]:
@@ -137,11 +143,16 @@ def run_agent(
             )
         messages.append({"role": "user", "content": tool_results})
 
+    # Record the reply the user is shown, so the stored conversation ends on an
+    # assistant turn instead of a tool_result the model never answered
+    # (M2 v2 A2, S8).
+    text = (
+        f"I wasn't able to finish this within {max_iterations} steps. "
+        "Try breaking the request into smaller pieces."
+    )
+    messages.append({"role": "assistant", "content": [{"type": "text", "text": text}]})
     return AgentResult(
-        text=(
-            f"I wasn't able to finish this within {max_iterations} steps. "
-            "Try breaking the request into smaller pieces."
-        ),
+        text=text,
         exceeded_max_iterations=True,
         iterations=max_iterations,
     )

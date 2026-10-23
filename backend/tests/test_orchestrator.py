@@ -249,7 +249,7 @@ def test_recall_does_not_return_current_sessions_live_turns(tmp_path):
     assert payload["count"] == 0  # turn 1 is still in s1's live window
 
 
-def test_ingest_failure_raises_after_session_is_durable_and_next_turn_catches_up(tmp_path):
+def test_ingest_failure_is_a_warning_after_session_is_durable_and_next_turn_catches_up(tmp_path):
     stores = _stores(tmp_path)
 
     class BrokenArchive:
@@ -268,9 +268,10 @@ def test_ingest_failure_raises_after_session_is_durable_and_next_turn_catches_up
         profile_store=stores["profile_store"],
         archive_store=BrokenArchive(),
     )
-    with pytest.raises(ArchiveSaveError):
-        broken.run_turn("satu", session_id="s1")
-    # fail loud, but the session itself is already durable
+    # M2 v2 A2 (2026-10-23): no longer raised; the reply survives, the caller is warned
+    result = broken.run_turn("satu", session_id="s1")
+    assert result.text == "Oke."
+    assert len(result.warnings) == 1 and "disk on fire" in result.warnings[0]
     assert len(stores["session_store"].load("s1").messages) == 2
 
     Orchestrator(FakeLLMClient([_text("Dua.")]), ToolRegistry(), **stores).run_turn(

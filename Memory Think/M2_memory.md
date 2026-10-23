@@ -179,6 +179,67 @@ Lima keputusan desain teknis (semua diverifikasi empiris di SQLite venv sebelum 
 
 **Belum digarap / TODO v2 (sisa setelah A1):** A2 (error-path persistence, butuh keputusan produk + kemungkinan bump `SessionRecord` 1.0.0→1.1.0 + migrasi minimal), B (polish ranking/tokenizer M2b, tool `read_conversation_around`), C (Reflexion persistence), D (decay/forgetting, encoding gate — tunggu data pemakaian nyata).
 
+## M2 v2 — A2: trace konkret (disusun ulang 2026-09-17)
+
+**Kenapa disusun ulang:** memori asisten mencatat tabel trace A2 dibuat 2026-09-11, tapi isinya tidak pernah tersimpan ke file ini. Versi ini dibangun ulang dari nol, dan kali ini **setiap baris adalah test yang bisa dijalankan**: `backend/tests/test_a2_trace.py` (characterization test, merekam perilaku *saat ini*, termasuk yang salah). Rumah yang dipakai: mock M5 `backend/devices/mock_home.py` (satu lampu + satu AC, semua mati), store asli di `tmp_path`, LLM palsu yang diskrip. Nomor skenario di bawah **tidak sama** dengan S1-S9 versi 2026-09-11 yang hilang.
+
+**Pertanyaan A2:** kalau satu turn gagal di tengah, apa yang dianggap "resmi terjadi", dan store mana yang harus tahu?
+
+| # | Kejadian | Dunia (lampu) | Sesi di disk | Profil | Arsip | Konsisten? |
+|---|---|---|---|---|---|---|
+| S1 | Normal: nyalakan lampu, jawab | nyala | lengkap + jawaban | – | tersimpan | ✅ |
+| S2 | Device offline, error jadi observasi, model bilang gagal | mati | tool_result error | – | tersimpan | ✅ |
+| S3 | Device **menerapkan** perintah tapi konfirmasi timeout (`LOST_ACK`) | **nyala** | tool_result "did not confirm", model bilang gagal | – | tersimpan | ❌ percakapan bilang gagal, lampu nyala; turn berikutnya model menjawab dari riwayat tanpa `home_get_state` |
+| S4 | Lampu nyala, lalu panggilan LLM berikutnya gagal (API 503) | **nyala** | **tidak ada** | – | tidak ada | ❌ turn hilang total; turn berikutnya model hanya melihat "halo" |
+| S5 | Lampu nyala, model sudah bilang "sudah nyala", `SessionStore.save` gagal | **nyala** | **tidak ada** | – | tidak ada | ❌ seperti S4, tapi user sudah diberi tahu berhasil |
+| S6 | `remember_user_fact` jalan, model bilang "saya ingat", `ProfileStore.save` gagal | – | ada, berisi "Siap, saya ingat." | **kosong** | tidak ada | ❌ sesi mengklaim diingat, profil tidak |
+| S7 | Turn sukses, `ArchiveStore.ingest` gagal | nyala | lengkap | – | belum | ⚠️ durable konsisten (arsip self-healing di turn berikutnya), tapi caller menerima exception untuk turn yang berhasil |
+| S8 | Lampu nyala, iterasi habis (`max_iterations`) | **nyala** | aksi tersimpan, **jawaban "couldn't finish" tidak** | – | tersimpan | ❌ sesi berakhir di tool_result; turn berikutnya model menerima dua pesan `user` berturut-turut dan tidak pernah melihat jawaban yang dilihat user |
+| S9 | Dua aksi dalam satu langkah: lampu sukses, AC offline | lampu nyala, AC mati | dua tool_result: sukses + error | – | tersimpan | ✅ |
+
+Catatan S8: dokumentasi Messages API menyebut pesan ber-role sama yang berturut-turut digabung jadi satu turn, jadi kemungkinan besar tidak error. **Belum diverifikasi dengan panggilan API asli.**
+
+**Pola yang terlihat:**
+- **Dunia fisik tidak bisa di-rollback.** Semua ❌ kecuali S6 punya bentuk sama: efek samping sudah terjadi, catatan tidak ikut. Maka jawaban A2 tidak bisa "batalkan turn"; yang bisa hanya "catat apa yang sudah terjadi" dan "cek dunia saat ragu".
+- **Kegagalan ada di tiga tempat berbeda:** di dalam loop setelah aksi (S4, S8), saat menulis store (S5, S6, S7), dan di device sendiri (S3). Satu mekanisme tidak menutup ketiganya.
+- `session.messages` sudah dimutasi di tempat oleh `run_agent()`, jadi di S4 orchestrator **sebenarnya memegang** turn parsial di memori; ia hanya tidak menyimpannya karena exception melompati `save`.
+
+**Opsi (dari trace 2026-09-11, dipetakan ke skenario):**
+
+| Opsi | Isi | Menutup | Tidak menutup | Biaya |
+|---|---|---|---|---|
+| (a) try/except di `Orchestrator.run_turn` + penanda turn terputus | saat `run_agent` raise, tambahkan pesan assistant penanda ("[turn terputus: …]"), simpan sesi/profil/arsip, lalu raise ulang; saat iterasi habis, simpan teks fallback ke sesi | S4, S8 | S3, S5, S6 | kecil, tanpa bump `SessionRecord` kalau penanda berupa pesan teks biasa |
+| (b) log aksi durable untuk tool non-read-only | append-only (mis. JSONL) ditulis oleh eksekutor tool sebelum/sesudah aksi, terpisah dari sesi | S5 (dan jejak audit semua kasus) | S3 (log hanya tahu "tidak terkonfirmasi") | sedang; tumpang tindih dengan audit log M11 |
+| (c) device state sebagai sumber kebenaran | adapter membaca ulang state setelah perintah gagal/timeout dan mengembalikan state aktual di observasi; prompt: cek state sebelum menjawab pertanyaan status | S3 | S4, S5, S8 | kecil di adapter mock; di adapter nyata butuh `get_state` per device |
+
+**Rekomendasi asisten (belum diputuskan user):** (a) + (c) sekarang, (b) ditunda ke M11 sebagai audit log. S6 dan S7 butuh keputusan terpisah: urutan tulis profil vs sesi, dan apakah kegagalan arsip tetap di-raise.
+
+**Pertanyaan yang harus dijawab user:**
+1. Turn yang gagal di tengah setelah aksi (S4, S8): disimpan sebagian dengan penanda terputus? Rekomendasi: ya.
+2. Perintah device yang tidak terkonfirmasi (S3): adapter otomatis membaca ulang state? Rekomendasi: ya.
+3. Log aksi durable (b): sekarang, atau bersama audit log M11? Rekomendasi: M11. Konsekuensinya S5 tetap celah yang diketahui.
+4. Kegagalan arsip (S7): tetap raise ke caller (keputusan M2b "fail loud"), atau cukup dicatat karena arsip self-healing? Rekomendasi: cukup dicatat.
+5. Profil gagal disimpan (S6): tulis profil **sebelum** sesi, supaya kegagalan profil tidak meninggalkan klaim palsu di sesi? Rekomendasi: ya, tapi ini mengubah urutan tulis yang sengaja dipertahankan sejak M2b.
+
+### Keputusan A2 (user, 2026-10-23) dan implementasinya
+
+| # | Pertanyaan | Keputusan | Implementasi |
+|---|---|---|---|
+| 1 | Turn gagal setelah aksi (S4, S8) | **Ya**, simpan sebagian | `Orchestrator.run_turn`: kalau `run_agent` raise setelah pesan user ditambahkan, pesan assistant penanda `[Turn interrupted ...]` ditambahkan, semua store ditulis, exception asli di-raise ulang (kegagalan simpan saat itu ditempel sebagai `add_note`, tidak menimpa penyebab). `run_agent`: teks "couldn't finish" saat iterasi habis disimpan sebagai pesan assistant. |
+| 2 | Perintah tidak terkonfirmasi (S3) | **Ya**, baca ulang state | `MockHomeAdapter._command`: setelah `DeviceError`, state dibaca ulang; kalau perubahan yang diminta sudah terjadi → sukses + `note`; kalau tidak → error berisi state aktual; kalau baca ulang gagal → "actual state unknown". `DEFAULT_SYSTEM_PROMPT` ditambah: status device dibaca dengan tool, bukan dari riwayat. |
+| 3 | Log aksi durable (b) | **Ditunda ke M11** (audit log) | Tidak ada. S5 jadi celah yang diketahui; test S5 tetap merekam perilaku lama dan diberi label KNOWN GAP. |
+| 4 | Arsip gagal (S7) | **Dicatat, tidak di-raise**, plus tanda peringatan | `AgentResult.warnings` (field baru, default kosong) + `logging.warning`. Arsip tetap self-healing di turn berikutnya. Mengubah keputusan "fail loud" M2b khusus untuk arsip; load/save sesi dan profil tetap fail loud. |
+| 5 | Urutan tulis (S6) | **Diubah**: profil → sesi → arsip | `Orchestrator._persist`. Profil gagal → sesi **tetap** ditulis, dengan catatan koreksi `[Saving the user profile failed ... NOT saved ...]` ditempel ke jawaban assistant terakhir, lalu exception di-raise (perbaikan 2026-10-23, lihat di bawah). Sesi gagal setelah profil tersimpan → profil berisi fakta yang memang diucapkan user (aman). |
+
+Test: `test_a2_trace.py` ditulis ulang untuk S3, S4, S6, S7, S8 (+ kasus tambahan: offline membawa state aktual, gagal di panggilan LLM pertama, kegagalan simpan tidak menutupi penyebab, profil tersimpan saat sesi gagal); `test_orchestrator.py::test_ingest_failure_*` diubah ke perilaku peringatan. Total 243 passed, 3 skipped.
+
+Celah yang tersisa: S5 (sampai M11); S8 dengan API asli belum diverifikasi, tapi kini tidak relevan karena peran pesan selalu bergantian.
+
+
+**Perbaikan celah kecil (2026-10-23, sesi yang sama):**
+- *Profil gagal menghilangkan aksi device di turn yang sama* → ditutup. Versi pertama tidak menulis sesi sama sekali saat profil gagal; sekarang sesi ditulis dengan catatan koreksi, jadi tool_result aksi device tetap tercatat dan klaim "saya ingat" langsung dikoreksi di turn yang sama (peran pesan tetap bergantian karena catatan ditempel ke pesan assistant terakhir, bukan pesan baru). Arsip dilewati, menyusul di turn berikutnya.
+- *Deteksi "turn sudah dimulai" bergantung pada asumsi kompaksi* → dihapus. Mutation test menunjukkan pengecekan identitas objek tidak mengubah hasil apa pun: setiap turn tersimpan selalu berakhir dengan pesan assistant, jadi penanda "terputus" cukup ditambahkan bila pesan terakhir ber-role `user`. Kalau kompaksi gagal sebelum input user ditambahkan, sesi tidak berubah dan hanya ditulis ulang apa adanya. Dua test kompaksi baru (gagal → tanpa penanda; sukses lalu LLM gagal → ada penanda) dan mutation check memastikan pengecekan role memang dijaga test.
+
 ## Bahasa Awam
 
 Kalau M1 itu "orangnya yang mikir dan pakai alat", M2a itu **buku catatan kecil** yang dia pegang selama ngobrol sama kamu.
