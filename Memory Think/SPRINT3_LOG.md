@@ -262,3 +262,49 @@
 - **File yang dibuat/diubah:** `backend/registry/retention.py` (baru), `backend/registry/__init__.py`, `backend/orchestrator/orchestrator.py` (wiring + docstring kelas), `backend/tests/test_tool_retention.py` (baru, 8 test), `Memory Think/M4_tool_registry.md`, entry ini.
 - **Hasil:** **266 passed, 3 skipped** (sebelumnya 258). Dua mutation check tertangkap test. Test lama `test_tools_loaded_in_one_turn_are_gone_at_the_start_of_the_next` tetap lulus tanpa diubah (tool di sana hanya dimuat, tidak dipakai).
 - **Belum dikerjakan / TODO lanjutan:** belum di-commit (bersama `AutoLoadPolicy`). Berikutnya: antarmuka device generik + kontrak Device → pending di mock → disambiguasi → CLI → smoke test → catatan M0/M1/M2.
+
+## [2026-10-23] Commit TODO M4 + CLI pertama (`python -m backend.cli`)
+
+- **Apa yang dikerjakan:**
+  1. Perbaikan 2 TODO M4 (`AutoLoadPolicy`, `tool_retention_turns`) di-commit `d327685` dan di-push.
+  2. User bertanya apakah "antarmuka device" berarti UI; dijelaskan bahwa itu interface kode, bukan tampilan. README dan peta sprint **belum punya modul UI** (web/dashboard); interaksi yang direncanakan: CLI (Sprint 3) dan suara (Sprint 5, M7-M10). User memilih CLI dulu baru antarmuka device; asisten setuju (bisa langsung dicoba, jadi smoke test API asli, mulai mengumpulkan data pemakaian untuk M2 v2 B/D, CLI hanya memanggil `MockHomeAdapter(...).sync_into(...)` sehingga tidak terdampak refactor antarmuka device).
+  3. **CLI baru `backend/cli.py`**: `Orchestrator` asli + LLM asli (`get_llm_client()`, memakai kredit API) + rumah simulasi. `get_current_time` selalu terpasang; tool rumah **discoverable** (bukan pinned) supaya `find_tools`, auto-load, dan retensi teruji (`--pin-home` untuk memasang semuanya). Perintah: `/state`, `/fail <device_id> offline|lost_ack`, `/trace on|off` (default on: tiap tool call + hasilnya dicetak, dibaca dari sesi tersimpan), `/new`, `/session`, `/help`, `/quit`. Error per turn ditampilkan (termasuk `__notes__`) tanpa menghentikan CLI; `AgentResult.warnings` dan batas langkah ditampilkan. Opsi: `--session`, `--pin-home`, `--debug`.
+  4. Test `backend/tests/test_cli.py` (14 kasus, LLM palsu, store di `tmp_path`). Dicek: test tidak membuat file di folder memori asli. Dicek manual: `--help` dan startup + `/state` + `/help` + `/quit` lewat pipe (tanpa panggilan API).
+  5. **280 passed, 3 skipped** (sebelumnya 266).
+- **Cara pakai:** `.venv/Scripts/python.exe -m backend.cli` (butuh `ANTHROPIC_API_KEY` di `.env`; model default `ANTHROPIC_MODEL`, sekarang `claude-haiku-4-5`). Sesi default `cli`, tersimpan di `backend/memory/sessions/` (gitignored).
+- **Catatan desain:** rumah simulasi hidup di memori dan mulai dari "semua mati" setiap run, sedangkan riwayat obrolan tersimpan; setelah restart riwayat bisa bilang "lampu nyala" padahal mati. Ini sengaja dibiarkan sebagai uji aturan A2 (cek state, jangan percaya riwayat).
+- **File yang dibuat/diubah:** `backend/cli.py` (baru), `backend/tests/test_cli.py` (baru), entry ini.
+- **Belum dikerjakan / TODO lanjutan:** user mencoba CLI = smoke test API asli (poin 6/7 daftar Sprint 3) → antarmuka device generik → pending di mock → disambiguasi → catatan M0/M1/M2. CLI belum di-commit.
+
+## [2026-10-23] Smoke test API asli lewat CLI (model `claude-haiku-4-5`)
+
+- **Apa yang dikerjakan:** User mencoba CLI sendiri (hasilnya belum ditempel ke chat), lalu minta asisten menjalankan skenario otomatis. Dijalankan dengan kelas `Cli` + `build_orchestrator` + LLM asli, tetapi store diarahkan ke folder scratchpad supaya profil global user tidak terisi data test (skrip di scratchpad sesi, bukan di repo). 12 baris input, 8 skenario.
+- **Hasil per skenario:**
+  1. Jam → `get_current_time` ✅. Temuan: jawaban dalam **UTC**, bukan waktu lokal user.
+  2. "nyalakan lampu ruang tamu" → `find_tools(query="turn on light", domain="home")` → `home_set_power` ✅ (alur MCP-Zero terbukti dengan model asli).
+  3. "matikan lagi" → langsung `home_set_power`, **tanpa** `find_tools` ✅ (retensi tool).
+  4. "lampunya nyala nggak?" → `home_get_state` ✅. `home_get_state` tidak dipakai sebelumnya, jadi dimuat lewat `AutoLoadPolicy.read_only` (kedua mekanisme terbukti).
+  5. `lost_ack` → tool_result sukses + `note` read-back, jawaban "sudah dinyalakan" sesuai kondisi nyata ✅ (A2 keputusan 2).
+  6. AC offline → error dengan state aktual, jawaban jujur ✅. Temuan: model menyebut "suhu **terukur** 24°C", padahal itu suhu target — nama key `temperature` ambigu.
+  7. "inget ya..." → `remember_user_fact` ✅; sesi baru → jawaban benar ✅, tetapi model memanggil `recall_memory` (arsip) padahal fakta sudah ada di blok profil system prompt, dan menjawab dengan mengutip ucapan lama. Temuan lain: model menjanjikan "nanti saya sesuaikan brightness-nya" — perilaku proaktif yang belum ada.
+  8. "buatkan aku kopi" → tidak memakai tool apa pun, jujur tidak bisa ✅.
+- **Biaya:** 18 panggilan LLM, 60.771 token input, 1.189 token output (~3,4 rb token input per panggilan; definisi tool + system prompt + riwayat mendominasi).
+- **Temuan dan rumahnya:**
+  - Gaya: campur "Anda"/"kamu", emoji, jawaban kopi bertele-tele → **M15** (persona).
+  - Janji proaktif ("nanti saya sesuaikan") → **M17** (proaktif); sampai saat itu termasuk klaim berlebihan.
+  - Waktu UTC, bukan zona waktu user → kecil, tanpa modul lain: zona waktu lokal di `get_current_time` / config.
+  - `temperature` ambigu → dikerjakan bersama antarmuka device generik (nama key state yang jelas, mis. `target_temperature`).
+  - Profil di prompt tapi model tetap `recall_memory` → kecil, tanpa modul lain: perjelas instruksi blok profil (fakta profil = sumber utama; recall untuk percakapan lama). Pantau dulu di pemakaian nyata.
+- **File yang dibuat/diubah:** `Memory Think/SPRINT3_LOG.md` — entry ini.
+- **Belum dikerjakan / TODO lanjutan:** commit CLI; 2 perbaikan kecil (zona waktu, instruksi profil) kalau user setuju; antarmuka device generik (+ nama key state); minta user menempel hasil percobaannya sendiri untuk dibandingkan.
+
+## [2026-10-23] Sesi ditutup — checkpoint untuk besok
+
+- **Apa yang dikerjakan:** User pulang; minta pembahasan terakhir dicatat lalu di-push. Perubahan yang belum di-commit (CLI `backend/cli.py` + `test_cli.py` + entry log sejak `d327685`) di-commit dan di-push bersama entry ini.
+- **Posisi saat ditutup:** Sprint 3. Selesai hari ini: keputusan + implementasi A2 (`603471e`), 2 TODO M4 (`d327685`), CLI, smoke test API asli 8/8. Test: 280 passed, 3 skipped.
+- **Menunggu dari user:** hasil terminal percobaan CLI-nya sendiri (Cara 1) untuk dibandingkan dengan smoke test asisten.
+- **Langkah berikutnya (urutan yang diusulkan asisten, belum dikonfirmasi user):**
+  1. Perbaikan kecil dari smoke test: zona waktu lokal untuk `get_current_time`; instruksi blok profil (fakta profil = sumber utama, `recall_memory` untuk percakapan lama).
+  2. Antarmuka device generik (`list_devices` / `read_state` / `apply`) + kontrak Device M0 + nama key state yang jelas (`target_temperature`).
+  3. State "pending" di mock → disambiguasi / bertanya balik → koreksi catatan M0/M1/M2 (penutup Sprint 3).
+- **PR user (versi berikutnya, butuh perangkat nyata):** lihat entry "adapter device nyata DITUNDA" hari ini.
