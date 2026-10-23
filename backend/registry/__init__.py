@@ -14,17 +14,24 @@ from backend.registry.catalog import (
 )
 from backend.registry.discovery_tool import (
     FIND_TOOLS_NAME,
+    AutoLoadPolicy,
     build_find_tools_contract,
+    make_catalog_resolver,
     make_discovery_tool,
 )
+from backend.registry.retention import DEFAULT_TOOL_RETENTION_TURNS, recently_used_tool_names
 
 __all__ = [
     "APP_PROVIDER",
+    "AutoLoadPolicy",
     "CatalogEntry",
     "CatalogHit",
+    "DEFAULT_TOOL_RETENTION_TURNS",
     "FIND_TOOLS_NAME",
     "SyncReport",
     "ToolCatalog",
     "build_find_tools_contract",
+    "make_catalog_resolver",
     "make_discovery_tool",
+    "recently_used_tool_names",
 ]

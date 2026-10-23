@@ -111,7 +111,8 @@ def test_calling_a_discoverable_tool_without_find_tools_is_an_observation_not_a_
     assert lamp_calls == []
     observation = llm.calls[1]["messages"][-1]["content"][0]
     assert observation["is_error"] is True
-    assert "not registered" in observation["content"]
+    # M4 TODO closed 2026-10-23: the observation now says the tool exists and how to load it
+    assert "not loaded" in observation["content"] and FIND_TOOLS_NAME in observation["content"]
 
 
 def test_tools_loaded_in_one_turn_are_gone_at_the_start_of_the_next(tmp_path):

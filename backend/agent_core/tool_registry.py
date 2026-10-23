@@ -24,9 +24,30 @@ class RegisteredTool:
     fn: Callable[..., Any]
 
 
+class ToolNotLoadedError(KeyError):
+    """The tool exists but must be loaded (e.g. with ``find_tools``) before it can be called.
+
+    The message is meant for the model, so ``str()`` returns it unquoted.
+    """
+
+    def __str__(self) -> str:
+        return str(self.args[0]) if self.args else ""
+
+
+# Called with a tool name the registry doesn't have. Returns the tool if it
+# could be installed on the spot, None if it is unknown, or raises
+# ToolNotLoadedError to tell the model how to get it.
+MissingToolResolver = Callable[[str], "RegisteredTool | None"]
+
+
 class ToolRegistry:
     def __init__(self) -> None:
         self._tools: dict[str, RegisteredTool] = {}
+        self._resolver: MissingToolResolver | None = None
+
+    def set_missing_tool_resolver(self, resolver: MissingToolResolver | None) -> None:
+        """Consulted by ``resolve()`` for names that are not installed (M4 catalog)."""
+        self._resolver = resolver
 
     def register(self, contract: ToolContract, fn: Callable[..., Any]) -> None:
         if contract.name in self._tools:
@@ -61,6 +82,20 @@ class ToolRegistry:
             return self._tools[name]
         except KeyError:
             raise KeyError(f"No tool registered under name {name!r}") from None
+
+    def resolve(self, name: str) -> RegisteredTool:
+        """``get()``, falling back to the missing-tool resolver for names not installed.
+
+        Raises ``ToolNotLoadedError`` if the resolver says the tool must be
+        loaded first, ``KeyError`` if nobody knows the name.
+        """
+        if name in self._tools:
+            return self._tools[name]
+        if self._resolver is not None:
+            resolved = self._resolver(name)
+            if resolved is not None:
+                return resolved
+        return self.get(name)
 
     def registered_tools(self) -> list[RegisteredTool]:
         return list(self._tools.values())

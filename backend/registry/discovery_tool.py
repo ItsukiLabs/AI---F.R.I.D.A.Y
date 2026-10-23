@@ -25,9 +25,15 @@ enforcing it at execution time is M11's job.
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any, Callable
 
-from backend.agent_core.tool_registry import ToolRegistry
+from backend.agent_core.tool_registry import (
+    MissingToolResolver,
+    RegisteredTool,
+    ToolNotLoadedError,
+    ToolRegistry,
+)
 from backend.registry.catalog import CatalogHit, ToolCatalog
 from backend.schemas import PermissionTier, ToolAnnotations, ToolContract, ToolExample
 
@@ -196,3 +202,48 @@ def make_discovery_tool(
         }
 
     return build_find_tools_contract(catalog), find_tools
+
+
+class AutoLoadPolicy(str, Enum):
+    """What happens when the model calls a catalog tool it never loaded.
+
+    The model may know a tool's name from an earlier turn (loaded tools do
+    not carry over) or from an example, and call it directly.
+    """
+
+    READ_ONLY = "read_only"  # load read-only tools on the spot; others need find_tools
+    ALL = "all"  # load any catalog tool on the spot
+    NEVER = "never"  # every catalog tool needs find_tools first
+
+
+def make_catalog_resolver(
+    catalog: ToolCatalog,
+    turn_registry: ToolRegistry,
+    policy: AutoLoadPolicy | str = AutoLoadPolicy.READ_ONLY,
+) -> MissingToolResolver:
+    """Missing-tool resolver for ``turn_registry``: auto-load or explain, per ``policy``.
+
+    Default ``READ_ONLY``: reading a device's state skips the extra
+    ``find_tools`` step, but a tool that changes the world is only callable
+    after the model deliberately searched for it and saw its description and
+    permission tier.
+    """
+    policy = AutoLoadPolicy(policy)
+
+    def resolve(name: str) -> RegisteredTool | None:
+        if not catalog.has(name):
+            return None
+        contract = catalog.get(name).contract
+        read_only = contract.annotations.read_only_hint
+        if policy is AutoLoadPolicy.ALL or (policy is AutoLoadPolicy.READ_ONLY and read_only):
+            entry = catalog.get(name)
+            turn_registry.bind(entry.contract, entry.fn)
+            return turn_registry.get(name)
+        reason = "" if read_only else " It is not read-only, so it is never loaded automatically."
+        raise ToolNotLoadedError(
+            f"Tool '{name}' exists in the catalog but is not loaded in this turn.{reason} "
+            f"Load it first with {FIND_TOOLS_NAME} (e.g. query: '{name.replace('_', ' ')}'), "
+            "read its description, then call it."
+        )
+
+    return resolve

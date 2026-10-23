@@ -45,7 +45,14 @@ from backend.memory.profile import Profile
 from backend.memory.profile_store import ProfileStore
 from backend.memory.session import Session
 from backend.memory.store import SessionStore
-from backend.registry import ToolCatalog, make_discovery_tool
+from backend.registry import (
+    DEFAULT_TOOL_RETENTION_TURNS,
+    AutoLoadPolicy,
+    ToolCatalog,
+    make_catalog_resolver,
+    make_discovery_tool,
+    recently_used_tool_names,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -94,8 +101,9 @@ class Orchestrator:
     to that turn's registry — all added to a *fresh* per-turn registry, so
     neither the caller's registry nor the catalog is ever mutated by a turn
     (``ToolRegistry.register()`` raises on a duplicate name, so registering
-    onto a reused registry would blow up on the second turn), and a tool that
-    ``find_tools`` loaded in one turn is gone at the start of the next.
+    onto a reused registry would blow up on the second turn). A tool that
+    ``find_tools`` loaded is gone at the start of the next turn unless it was
+    called successfully within the last ``tool_retention_turns`` turns.
 
     Stores default to the real on-disk locations under ``backend/memory/``;
     inject ``tmp_path``-based ones in tests.
@@ -111,10 +119,16 @@ class Orchestrator:
         max_iterations: int = 6,
         system: str = DEFAULT_SYSTEM_PROMPT,
         catalog: ToolCatalog | None = None,
+        catalog_auto_load: AutoLoadPolicy | str = AutoLoadPolicy.READ_ONLY,
+        tool_retention_turns: int | None = DEFAULT_TOOL_RETENTION_TURNS,
     ) -> None:
         self.llm = llm
         self.registry = registry if registry is not None else ToolRegistry()
         self.catalog = catalog
+        self.catalog_auto_load = AutoLoadPolicy(catalog_auto_load)
+        # Catalog tools used successfully in the last N turns are loaded again;
+        # None = the whole stored conversation, 0 = never (backend/registry/retention.py).
+        self.tool_retention_turns = tool_retention_turns
         self.session_store = session_store or SessionStore()
         self.profile_store = profile_store or ProfileStore()
         self.archive_store = archive_store or ArchiveStore()
@@ -128,6 +142,10 @@ class Orchestrator:
         if self.catalog is not None:
             for entry in self.catalog.pinned_tools():
                 turn_registry.register(entry.contract, entry.fn)
+            for name in recently_used_tool_names(session.messages, self.tool_retention_turns):
+                if self.catalog.has(name) and not turn_registry.has(name):
+                    entry = self.catalog.get(name)
+                    turn_registry.register(entry.contract, entry.fn)
         for contract, fn in make_profile_tools(profile):
             turn_registry.register(contract, fn)
         for contract, fn in make_recall_tools(self.archive_store, current_session=session):
@@ -135,6 +153,10 @@ class Orchestrator:
         if self.catalog is not None and self.catalog.has_discoverable_tools():
             contract, fn = make_discovery_tool(self.catalog, turn_registry)
             turn_registry.register(contract, fn)
+        if self.catalog is not None:
+            turn_registry.set_missing_tool_resolver(
+                make_catalog_resolver(self.catalog, turn_registry, self.catalog_auto_load)
+            )
         return turn_registry
 
     def run_turn(self, user_input: str, session_id: str) -> AgentResult:

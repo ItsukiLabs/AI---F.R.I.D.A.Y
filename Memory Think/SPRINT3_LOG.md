@@ -241,3 +241,24 @@
   6. Benchmark tugas ala SAGE dengan device nyata / demo HA, dinilai 7 mode kegagalan Sasha (irisan M16).
 - **Alasan/keputusan:** Tanpa perangkat dan pilihan gateway, adapter nyata hanya tebakan. Sprint 3 ditutup dengan yang bisa dikerjakan tanpa hardware (daftar dibahas di chat 2026-10-23).
 - **File yang dibuat/diubah:** `Memory Think/SPRINT3_LOG.md` — entry ini.
+
+## [2026-10-23] Commit + push mock M5 dan A2
+
+- **Apa yang dikerjakan:** Atas persetujuan user, semua perubahan sejak 2026-09-17 (mock M5, trace A2, implementasi A2 + perbaikan celah kecil, catatan modul, entry log) di-commit sebagai `603471e` (`feat(devices,memory): M5 mock home + M2 v2 A2 error-path persistence`, 11 file) dan di-push ke `origin/master`. Test sebelum commit: 247 passed, 3 skipped.
+- **File yang dibuat/diubah:** `Memory Think/SPRINT3_LOG.md` — entry ini (masuk commit berikutnya).
+- **Belum dikerjakan / TODO lanjutan:** urutan yang disepakati: (1) pesan untuk tool katalog yang belum dimuat → (2) tool bertahan lintas turn → (3) antarmuka device generik + kontrak Device → (4) state pending di mock → (5) disambiguasi/bertanya balik → (6) CLI → (7) smoke test API asli → (8) koreksi catatan M0/M1/M2.
+
+## [2026-10-23] M4 TODO #1: memanggil tool katalog yang belum dimuat — `AutoLoadPolicy`
+
+- **Apa yang dikerjakan:** Asisten menawarkan (a) pesan yang mengarahkan ke `find_tools` atau (b) dimuat otomatis, dengan saran: (b) untuk read-only, (a) untuk yang mengubah sesuatu. User: jadikan kondisi, semua opsi tetap bisa dipakai. Implementasi `AutoLoadPolicy` (`read_only` default / `all` / `never`) lewat parameter `Orchestrator(catalog_auto_load=...)`; detail di `M4_tool_registry.md`.
+- **File yang dibuat/diubah:** `backend/agent_core/{tool_registry,loop}.py`, `backend/registry/{discovery_tool,__init__}.py`, `backend/orchestrator/orchestrator.py`, `backend/tests/test_catalog_auto_load.py` (baru, 11 test), `backend/tests/test_orchestrator_catalog.py` (1 assertion), `Memory Think/M4_tool_registry.md`, entry ini.
+- **Hasil:** **258 passed, 3 skipped** (sebelumnya 247). Mutation check: default `all` → 2 test gagal, sesuai harapan.
+- **Alasan/keputusan:** aksi yang mengubah dunia tetap lewat jalur yang dipilih sengaja (deskripsi + tier terlihat, bekal M11); pembacaan tidak membuang langkah. Arah dependensi tetap `registry` → `agent_core`.
+- **Belum dikerjakan / TODO lanjutan:** belum di-commit. Berikutnya: TODO M4 #2 (tool bertahan lintas turn) → antarmuka device generik → pending di mock → disambiguasi → CLI → smoke test → catatan M0/M1/M2.
+
+## [2026-10-23] M4 TODO #2: tool bertahan lintas turn — `tool_retention_turns`
+
+- **Apa yang dikerjakan:** Asisten menawarkan (a) selama sesi, (b) beberapa turn (MemTool), (c) tetap seperti sekarang; saran (b) dijadikan pengaturan. User setuju. Implementasi `Orchestrator(tool_retention_turns=3 | None | 0)` dengan helper `recently_used_tool_names` yang membaca riwayat sesi (tanpa state baru); hanya panggilan berhasil yang dihitung. Detail di `M4_tool_registry.md`.
+- **File yang dibuat/diubah:** `backend/registry/retention.py` (baru), `backend/registry/__init__.py`, `backend/orchestrator/orchestrator.py` (wiring + docstring kelas), `backend/tests/test_tool_retention.py` (baru, 8 test), `Memory Think/M4_tool_registry.md`, entry ini.
+- **Hasil:** **266 passed, 3 skipped** (sebelumnya 258). Dua mutation check tertangkap test. Test lama `test_tools_loaded_in_one_turn_are_gone_at_the_start_of_the_next` tetap lulus tanpa diubah (tool di sana hanya dimuat, tidak dipakai).
+- **Belum dikerjakan / TODO lanjutan:** belum di-commit (bersama `AutoLoadPolicy`). Berikutnya: antarmuka device generik + kontrak Device → pending di mock → disambiguasi → CLI → smoke test → catatan M0/M1/M2.

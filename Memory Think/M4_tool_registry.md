@@ -75,13 +75,38 @@ Bayangkan F.R.I.D.A.Y bekerja di **meja kerja** yang ada di depan **gudang alat*
 - **Katalog tidak dipersist.** Ia data turunan dari penyedia (prinsip ScaleMCP). Tidak ada file baru di disk, tidak ada migrasi.
 - **Test baru di file baru.** File test lama tetap utuh sebagai bukti tidak ada regresi.
 
+## [2026-10-23] Memanggil tool katalog yang belum dimuat — `AutoLoadPolicy`
+
+**Masalah (temuan smoke 2026-09-11):** model memanggil tool yang ada di katalog tapi belum dimuat di turn ini (mis. tahu namanya dari turn sebelumnya). Observasinya dulu "Tool 'x' is not registered", seolah tool tidak ada, sehingga model bisa menyimpulkan "tidak bisa".
+
+**Keputusan user:** jadikan kondisi, semua opsi tetap tersedia. `Orchestrator(catalog_auto_load=...)`:
+- `read_only` (**default**): tool dengan `read_only_hint=True` dimuat dan dijalankan saat itu juga (hemat satu langkah); tool yang tidak read-only harus lewat `find_tools` supaya model sengaja memilihnya dan melihat deskripsi + `permission_tier`-nya.
+- `all`: semua tool katalog dimuat otomatis.
+- `never`: semua harus lewat `find_tools`.
+
+Kalau tidak dimuat, observasinya menjelaskan: tool ada di katalog, belum dimuat, (bila bukan read-only) tidak pernah dimuat otomatis, muat dengan `find_tools` (contoh query dari nama tool). Nama di luar katalog tetap "not registered".
+
+**Implementasi:** `ToolRegistry.resolve()` + `set_missing_tool_resolver()` + `ToolNotLoadedError` (`agent_core`, tetap tidak mengimpor `registry`); `make_catalog_resolver()` + `AutoLoadPolicy` di `backend/registry/discovery_tool.py`; loop memakai `resolve()`. Argumen tool yang dimuat otomatis tetap divalidasi skema. Test: `test_catalog_auto_load.py` (11), 1 assertion di `test_orchestrator_catalog.py` diubah dari "not registered" ke "not loaded" (perilaku yang sengaja diganti). Mutation check: default diubah ke `all` → 2 test gagal.
+
+## [2026-10-23] Tool bertahan lintas turn — retensi ala MemTool
+
+**Masalah:** registry per turn selalu mulai dari nol, jadi "nyalakan lampu" lalu "matikan lagi" butuh `find_tools` lagi.
+
+**Keputusan user:** opsi (b) "bertahan beberapa turn" sebagai default, dijadikan pengaturan supaya semua opsi tetap ada. `Orchestrator(tool_retention_turns=...)`: `3` (**default**), `None` = selama sesi (opsi a), `0` = tidak bertahan (opsi c, perilaku lama).
+
+**Desain:** tanpa state baru. Di awal turn, `recently_used_tool_names(session.messages, N)` (`backend/registry/retention.py`) membaca riwayat sesi dan mengembalikan tool yang dipanggil **berhasil** (`tool_result.is_error = False`) dalam N turn terakhir (turn dimulai dari pesan user berupa teks). Tool itu dimuat ulang dari katalog kalau masih ada di katalog (tool yang dihapus `sync` tidak ikut; kontrak yang berubah memakai versi terbaru). Otomatis bertahan setelah restart, tidak perlu bump `SessionRecord`. Turn yang sudah dikompaksi tidak lagi dihitung.
+
+**Pengaman:** panggilan yang gagal tidak memberi retensi. Kalau ikut dihitung, tool aktuator yang dipanggil "buta" dan ditolak (`ToolNotLoadedError`) akan termuat di turn berikutnya tanpa pernah lewat `find_tools`. Konsekuensi yang diterima: tool yang gagal karena device offline juga tidak dipertahankan, jadi model mencari lagi.
+
+**Test:** `test_tool_retention.py` (8). Mutation check: default 0 → 1 test gagal; hitung panggilan gagal → 2 test gagal.
+
 ## Belum digarap / TODO lanjutan
 
 - **Keputusan A2 (checkpoint wajib).** Diputuskan saat tool device mock pertama dibuat, dengan kasus konkret "lampu nyala tapi turn gagal tersimpan". M4 tidak menyentuh urutan tulis orchestrator. **[2026-09-17]** Mock sudah ada; trace 9 skenario + 5 pertanyaan menunggu jawaban user di `M2_memory.md` bagian A2.
 - **M5:** adapter memanggil `catalog.sync("<adapter_id>", tools)` dan `describe_domain(...)`. Tool device mock pertama pakai pola benchmark SAGE (state awal → perintah → cek state akhir, tanpa hardware). **[2026-09-17] Selesai untuk mock:** `backend/devices/mock_home.py`, lihat `M5_device_layer.md`.
 - **M11:** penegakan `permission_tier` saat eksekusi, minimal konfirmasi untuk `CRITICAL`. Saat ini `find_tools` hanya melaporkan tier.
-- **`find_tools` memakan satu iterasi.** `max_iterations` default 6; tugas device multi-langkah bisa mendekati batas. Pantau saat pemakaian nyata.
-- **Tool yang di-load tidak bertahan lintas turn.** LLM harus mencari lagi di turn berikutnya. Kalau ini jadi masalah biaya/latensi, rujukan: MemTool (arXiv 2507.21428).
+- **`find_tools` memakan satu iterasi.** `max_iterations` default 6; tugas device multi-langkah bisa mendekati batas. Pantau saat pemakaian nyata. **[2026-10-23]** Berkurang untuk tool read-only (dimuat otomatis, `AutoLoadPolicy`).
+- **Tool yang di-load tidak bertahan lintas turn.** LLM harus mencari lagi di turn berikutnya. Kalau ini jadi masalah biaya/latensi, rujukan: MemTool (arXiv 2507.21428). **[2026-10-23] Selesai**, lihat bagian retensi di atas.
 - **Embedding/vector index** kalau katalog tumbuh ke ratusan tool.
 - **Belum ada entry point produksi yang memakai katalog.** Belum ada CLI/server yang membangun `Orchestrator`; semua pemakaian masih lewat test.
 - **Smoke test dengan API key asli** belum dijalankan: `get_current_time` sebagai tool discoverable, tanya "jam berapa sekarang?", pastikan LLM memanggil `find_tools` lalu `get_current_time`.

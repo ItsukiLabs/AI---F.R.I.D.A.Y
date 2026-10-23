@@ -27,7 +27,7 @@ from backend.agent_core.config import (
     get_memory_keep_recent_messages,
 )
 from backend.agent_core.llm_client import LLMClient, LLMResponse, ToolCallRequest
-from backend.agent_core.tool_registry import ToolRegistry
+from backend.agent_core.tool_registry import ToolNotLoadedError, ToolRegistry
 from backend.memory.compaction import compact
 from backend.memory.profile import Profile
 from backend.memory.session import Session
@@ -69,7 +69,9 @@ def _assistant_message(response: LLMResponse) -> dict[str, Any]:
 def _execute_tool_call(call: ToolCallRequest, registry: ToolRegistry) -> tuple[str, bool]:
     """Run one tool call. Returns (tool_result_content, is_error) — never raises."""
     try:
-        registered = registry.get(call.name)
+        registered = registry.resolve(call.name)
+    except ToolNotLoadedError as exc:
+        return str(exc), True
     except KeyError as exc:
         return f"Tool '{call.name}' is not registered: {exc}", True
 
