@@ -407,3 +407,45 @@
   2. `fadca24` — `feat(devices): device contract + generic device layer (stage 2)` (kontrak Device, `DeviceService`, `build_device_tools`, mock sebagai driver, test baru + 3 test lama yang disesuaikan, catatan M0/M5, entry log hari ini).
   3. Commit docs berisi entry ini.
 - **Belum dikerjakan / TODO lanjutan:** cek hasil CI dengan SHA baru (lewat `gh run list`). Berikutnya Tahap 3: `pending` di mock, disambiguasi, koreksi catatan M0/M1/M2 + README, `STATUS.md`.
+
+## [2026-10-25] Cara memakai `gh` + aturan baru: daftar rencana sebelum tiap tahap; rencana Tahap 3
+
+- **Diskusi `gh`:** user minta cara mengecek CI sendiri (dijelaskan `gh run list` / `run watch` / `run view` / `--log` / `--log-failed` / `--web` / `rerun`), lalu mendapat error "not a git repository" karena menjalankan di luar folder proyek (solusi: `cd` ke folder proyek, atau `--repo ItsukiLabs/AI---F.R.I.D.A.Y`), dan bertanya fungsi `gh` (GitHub CLI: fitur website GitHub dari terminal; `git` = riwayat kode).
+- **Aturan standing baru dari user:** sebelum mengerjakan setiap tahap/paket pekerjaan, asisten menulis **daftar bernomor** apa yang akan dikerjakan (apa, file, dampak, hal yang butuh izin) dan menunggu persetujuan; laporan akhir mengikuti nomor yang sama. Disimpan juga di memori asisten (`friday_stage_checklist_first.md`).
+- **Rencana Tahap 3 diajukan ke user** (belum disetujui): 3.1 perangkat lambat/pending di mock + `DeviceService`; 3.2 disambiguasi perangkat (rumah 2 lampu satu ruangan, instruksi bertanya balik); 3.3 CLI (`/slow`, `/home`, state desired/pending); 3.4 smoke test LLM asli kecil (butuh izin, memakai kredit API); 3.5 koreksi catatan M0/M1/M2/M4 + README; 3.6 `STATUS.md`; 3.7 penutup Sprint 3 di log; 3.8 commit+push atas instruksi.
+- **File yang dibuat/diubah:** entry ini.
+
+## [2026-10-25] Tahap 3 selesai — Sprint 3 DITUTUP
+
+- **User menyetujui rencana Tahap 3** (3.1–3.8) termasuk 3.4 smoke test API asli ("selama kredit memadai", sisa ±$4,81).
+- **Laporan per nomor:**
+  - **3.1 Perangkat lambat (pending)** ✅ — `CommandAccepted` di `backend/devices/service.py` (bukan `DeviceError`), status `pending` tanpa baca ulang, `DeviceService.get_operation()`, operasi pending jadi `succeeded` saat pembacaan berikutnya menunjukkan perubahan; `DeviceSnapshot.pending_operations` → **kontrak Device 1.1.0** (test versi Tahap 2 disesuaikan). Tool: `pending` bukan error, membawa `note` "jangan bilang sudah selesai". Mock: `MockHome.make_slow(device, reads)` + `queued()`.
+  - **3.2 Disambiguasi** ✅ — `two_lamp_home()` (lampu utama + lampu baca di ruang tamu; `default_home()` tidak berubah), aturan `ASK_WHICH_DEVICE` di setiap deskripsi tool aktuator + satu kalimat di `DEFAULT_SYSTEM_PROMPT`.
+  - **3.3 CLI** ✅ — `/slow <device_id> <reads>`, `--home default|dua-lampu`, `/state` menampilkan antrean pending.
+  - **3.4 Smoke test API asli** ✅ (`claude-haiku-4-5`, skrip di scratchpad, store di folder sementara yang dihapus): **20 panggilan, 72.684 token input, 1.523 output, ±$0,08.**
+    - Jam → waktu lokal `+07:00` ✅ (nama zona Windows "SE Asia Standard Time" karena `FRIDAY_TIMEZONE` belum diisi).
+    - Fakta profil di sesi baru → dijawab langsung **tanpa `recall_memory`** ✅ (temuan smoke 2026-10-23 tertutup).
+    - Suhu AC → dibedakan "target 24°C" vs "suhu ruangan 29°C" ✅ (temuan `temperature` ambigu tertutup), lalu menawarkan menyalakan ke 25°C sesuai profil.
+    - Lampu lambat → "sudah saya kirim, sedang diproses", lalu "belum nyala, masih diproses" ✅. Catatan: model sempat memanggil `home_set_power` tanpa memuatnya (dengan `"on": "true"` string) → ditolak "not loaded" → `find_tools` → benar; satu langkah terbuang, perilaku `AutoLoadPolicy` sesuai desain.
+    - 2 lampu, "nyalakan lampunya dong" → **bertanya balik** dengan dua pilihan ✅. "nyalakan lampu ruang tamu" → memilih lampu utama tanpa bertanya (tafsiran wajar; dicatat).
+    - Gaya: masih emoji dan campur "Anda"/"kamu" (M15).
+  - **3.5 Catatan modul** ✅ — status M0/M1/M2/M4/M5 diperbarui (M1 dapat tabel "Perubahan sejak implementasi awal"), README ditulis ulang (yang sudah bisa, cara menjalankan, CLI, test, CI, struktur folder, dokumentasi). Log sprint tidak diedit (append-only).
+  - **3.6 `STATUS.md`** ✅ — baru di root: posisi, test/CI, kemampuan, celah yang diketahui + rencana, langkah berikutnya, catatan untuk pemilik.
+  - **3.7 Penutupan** ✅ — entry ini + catatan status di `sprint-paper-mapping.md` (Sprint 3 ditutup, versi simulasi).
+  - **3.8 Commit + push** — menunggu instruksi user.
+- **Test:** file baru `backend/tests/test_device_pending_and_ambiguity.py` (19 kasus). **351 passed, 3 skipped** (sebelumnya 332). Mutation check: penyelesaian pending dicopot → 1 gagal; `pending` jadi error → 2; aturan tanya-balik dicopot → 1; antrean mock tidak maju → 2.
+- **Ringkasan Sprint 3 (2026-09-10 → 2026-10-25):**
+  - Paper: 7 PDF baru (MCP-Zero, ScaleMCP, Tool-to-Agent, EasyTool, ToolLLM, SAGE, Sasha), dibaca penuh.
+  - M4: katalog + `find_tools` + sync hash + kontrak 1.1.0 + `AutoLoadPolicy` + retensi tool.
+  - M5: mock → driver/service/tool generik, kontrak Device 1.1.0 (shadow, status, `operation_id`, pending), disambiguasi.
+  - M2 v2 A2 (error-path persistence) diputuskan dan diimplementasi di sprint ini.
+  - CLI, smoke test API asli (2026-10-23 dan 2026-10-25), dokumen tinjauan + feedback 4 model AI, pengerasan Tahap 1, CI GitHub Actions (SHA terkunci).
+  - Test: 136 → 351.
+- **Dibawa ke Sprint 4 / versi berikutnya:** Tahap 4 (mini-M11 + jurnal aksi + label data tak tepercaya), Tahap 5 (mini-M16 + observability), adapter perangkat nyata (PR user), pending tanpa batas waktu, format pesan internal (sebelum Sprint 8), M2 v2 B/C/D.
+- **File yang dibuat/diubah (Tahap 3):** `backend/devices/{service,tools,mock_home,__init__}.py`, `backend/schemas/device_contract.py`, `backend/agent_core/loop.py`, `backend/cli.py`, `backend/tests/test_device_layer.py` (1 baris versi), `backend/tests/test_device_pending_and_ambiguity.py` (baru), `README.md`, `STATUS.md` (baru), `Memory Think/{M0_contract_layer,M1_agent_core,M2_memory,M4_tool_registry,M5_device_layer,sprint-paper-mapping}.md`, entry ini.
+
+## [2026-10-25] Commit Tahap 3; Tahap 4 ditunda sampai user kembali
+
+- **Apa yang dikerjakan:** Atas instruksi user, perubahan Tahap 3 (penutup Sprint 3) di-commit (test sebelum commit: **351 passed, 3 skipped**). User minta **Tahap 4 dipending** dulu ("mood sudah habis"), akan mengabari kalau mau lanjut. Push belum dilakukan (user hanya menyebut commit).
+- **Posisi saat berhenti:** Sprint 3 ditutup. Berikutnya Tahap 4 = awal Sprint 4 (mini-M11 gerbang izin + jurnal aksi + label data tak tepercaya). Sesuai aturan standing, sebelum Tahap 4 dimulai asisten menulis daftar rencana bernomor dan menunggu persetujuan. Ringkasan posisi ada di `STATUS.md`.
+- **Untuk user (di luar repo):** update Node.js ke v24.22.1 dan PHP ke 8.4.27; opsional `FRIDAY_TIMEZONE=Asia/Jakarta` di `.env`.

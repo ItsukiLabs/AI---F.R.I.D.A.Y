@@ -15,9 +15,15 @@ Tools:
   also turns the device on when it has a power switch, so "a bit dark in
   here" is one call.
 
-A command whose final status is not ``succeeded`` raises ``DeviceError``
-with the result in the message, so the loop reports it to the model as a
-tool error and the model can't mistake it for success.
+A command that ``failed`` or is ``unknown`` raises ``DeviceError`` with the
+result in the message, so the loop reports it to the model as a tool error
+and the model can't mistake it for success. A ``pending`` command (slow
+device, stage 3) is returned normally with a note: it isn't a failure, but
+it isn't done either.
+
+Every actuator description carries the clarifying rule from Sasha
+(PAPER_NOTES.md #5): when the user's words fit more than one device, ask
+which one instead of guessing.
 """
 
 from __future__ import annotations
@@ -54,9 +60,24 @@ def _object(properties: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# Appended to every actuator tool description (stage 3, disambiguation).
+ASK_WHICH_DEVICE = (
+    " If the user's words fit more than one device (e.g. two lamps in the same "
+    "room) and they did not say which, do not call this tool: ask which one first."
+)
+
+PENDING_NOTE = (
+    "The device accepted the command but has not confirmed it yet. Tell the user "
+    "it was sent and is still in progress; do not say it is done. Check later "
+    "with home_get_state."
+)
+
+
 def _settle(service: DeviceService, device_id: str, changes: dict[str, Any]) -> dict[str, Any]:
     outcome = service.apply(device_id, changes)
     payload = outcome.model_dump(mode="json", exclude_none=True)
+    if outcome.status is CommandStatus.PENDING:
+        return {**payload, "note": PENDING_NOTE}
     if outcome.status is not CommandStatus.SUCCEEDED:
         raise DeviceError(
             f"{outcome.message or 'command not confirmed'} "
@@ -165,7 +186,8 @@ def build_device_tools(
                     description=(
                         "Turn a device (lamp or AC) on or off. Returns the command "
                         "result with the state the device reports."
-                    ),
+                    )
+                    + ASK_WHICH_DEVICE,
                     input_schema=_object(
                         {
                             "device_id": device_property(POWER.name),
@@ -230,7 +252,8 @@ def _set_tool(
             description=(
                 f"Set a device's {capability.description}{unit}; turns the device on "
                 "if it has a power switch. Returns the command result."
-            ),
+            )
+            + ASK_WHICH_DEVICE,
             input_schema=_object(
                 {"device_id": device_property(key), key: capability.json_schema()}
             ),

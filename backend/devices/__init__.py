@@ -24,13 +24,15 @@ from backend.devices.mock_home import (
     MockHome,
     MockHomeAdapter,
     default_home,
+    two_lamp_home,
 )
-from backend.devices.service import DeviceDriver, DeviceError, DeviceService
+from backend.devices.service import CommandAccepted, DeviceDriver, DeviceError, DeviceService
 from backend.devices.tools import build_device_tools
 
 __all__ = [
     "MOCK_HOME_DOMAIN",
     "MOCK_HOME_PROVIDER",
+    "CommandAccepted",
     "DeviceDriver",
     "DeviceError",
     "DeviceService",
@@ -40,4 +42,5 @@ __all__ = [
     "MockHomeAdapter",
     "build_device_tools",
     "default_home",
+    "two_lamp_home",
 ]

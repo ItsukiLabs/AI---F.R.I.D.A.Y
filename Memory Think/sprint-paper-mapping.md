@@ -104,6 +104,8 @@
 **Kategori: #4 + #5** — Device Orchestration + IoT Integration
 **Modul:** M4 (Tool Registry) + M5 (Device Abstraction Layer)
 
+**[2026-10-25] Status: Sprint 3 DITUTUP (versi simulasi).** M4 v1 + M5 mock (kontrak Device, device shadow, pending, disambiguasi) selesai; adapter perangkat nyata ditunda ke versi berikutnya. Ringkasan di `SPRINT3_LOG.md` entry penutup 2026-10-25.
+
 | # | Paper | Kategori | Modul | Status | Fungsi di Modul Ini |
 |---|---|---|---|---|---|
 | 1 | **MCP-Zero** ⭐ | #4 | M4 | ✅ Punya | Agent minta tool sendiri saat butuh (active request → hierarchical routing → iterasi) |

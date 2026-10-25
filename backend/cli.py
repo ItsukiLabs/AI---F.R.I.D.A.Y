@@ -26,7 +26,14 @@ from typing import Any, Callable
 from backend.agent_core.llm_client import LLMClient, get_llm_client
 from backend.agent_core.tool_registry import ToolRegistry
 from backend.agent_core.tools.time_tool import TIME_TOOL_CONTRACT, get_current_time
-from backend.devices import DeviceError, FailureMode, MockHome, MockHomeAdapter, default_home
+from backend.devices import (
+    DeviceError,
+    FailureMode,
+    MockHome,
+    MockHomeAdapter,
+    default_home,
+    two_lamp_home,
+)
 from backend.memory.session import Session
 from backend.memory.store import SessionStore
 from backend.orchestrator import Orchestrator
@@ -34,10 +41,16 @@ from backend.registry import ToolCatalog
 
 DEFAULT_SESSION_ID = "cli"
 
+# --home choices: the standard home, or one with two lamps in the living room
+# (to try "which lamp?" disambiguation).
+HOMES: dict[str, Callable[[], MockHome]] = {"default": default_home, "dua-lampu": two_lamp_home}
+
 HELP = """Commands:
   /state                         show the mock home's devices and state
   /fail <device_id> <mode>       next command to that device fails once
                                  (mode: offline | lost_ack)
+  /slow <device_id> <reads>      commands to that device take effect only after
+                                 <reads> later state reads (0 = normal again)
   /trace on|off                  show the tool calls of each turn (default on)
   /new                           start a new session
   /session                       show the current session id
@@ -92,9 +105,16 @@ def format_trace(turn: list[dict[str, Any]]) -> list[str]:
 
 
 def format_state(home: MockHome) -> list[str]:
-    return [
+    rows = [
         f"  {d.device_id} ({d.name}, {d.room}): {json.dumps(d.state)}" for d in home.devices()
     ]
+    for device_id, items in home.queued().items():
+        for item in items:
+            rows.append(
+                f"  pending {device_id}: {json.dumps(item['changes'])} "
+                f"(applies after {item['reads_left']} more read(s))"
+            )
+    return rows
 
 
 class Cli:
@@ -162,6 +182,8 @@ class Cli:
                 self.write(row)
         elif name == "/fail":
             self._fail(args)
+        elif name == "/slow":
+            self._slow(args)
         elif name == "/trace" and args in (["on"], ["off"]):
             self.trace = args[0] == "on"
             self.write(f"trace {args[0]}")
@@ -189,16 +211,34 @@ class Cli:
             return
         self.write(f"next command to {device_id} will fail: {mode.lower()}")
 
+    def _slow(self, args: list[str]) -> None:
+        if len(args) != 2 or not args[1].isdigit():
+            self.write("usage: /slow <device_id> <reads>  (reads = 0 makes it normal again)")
+            return
+        device_id, reads = args[0], int(args[1])
+        try:
+            self.home.make_slow(device_id, reads)
+        except DeviceError as exc:
+            self.write(f"{exc}; /state lists the device ids")
+            return
+        if reads:
+            self.write(f"{device_id} is slow: commands apply after {reads} later read(s)")
+        else:
+            self.write(f"{device_id} is normal again")
+
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="python -m backend.cli", description=__doc__.split("\n")[0])
     parser.add_argument("--session", default=DEFAULT_SESSION_ID, help="session id to continue")
     parser.add_argument("--pin-home", action="store_true", help="install home tools every turn")
+    parser.add_argument(
+        "--home", choices=sorted(HOMES), default="default", help="which mock home to start with"
+    )
     parser.add_argument("--debug", action="store_true", help="show debug logging")
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR)
-    home = default_home()
+    home = HOMES[args.home]()
     orchestrator = build_orchestrator(get_llm_client(), home, pin_home_tools=args.pin_home)
     cli = Cli(orchestrator, home, args.session)
 

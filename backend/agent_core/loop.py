@@ -54,7 +54,8 @@ DEFAULT_SYSTEM_PROMPT = (
     "didn't, and never use an unrelated tool as a stand-in. Earlier messages "
     "can be out of date about the physical world: when asked about a "
     "device's current state, read it with a tool instead of answering from "
-    "the conversation history."
+    "the conversation history. If a request could mean more than one device "
+    "and the user did not say which, ask which one instead of guessing."
 )
 
 

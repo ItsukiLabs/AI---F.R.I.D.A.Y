@@ -1,5 +1,7 @@
 # M5 — Device Abstraction Layer
 
+> Status (per 2026-10-25): **mock lengkap** — driver `MockHome` + `DeviceService` (shadow desired/reported, `operation_id`, status, baca ulang, pending) + tool yang dibuat dari kemampuan perangkat. Adapter perangkat nyata **ditunda** ke versi F.R.I.D.A.Y berikutnya (PR user di `SPRINT3_LOG.md` 2026-10-23). Bagian bertanggal di bawah mencatat tiap tahap.
+
 ## Kegunaan
 
 Lapisan yang membuat perangkat fisik (lampu, AC, dan seterusnya) bisa dipakai agent sebagai tool biasa. Adapter per ekosistem perangkat menerjemahkan perangkat menjadi `ToolContract` lalu mendaftarkannya ke katalog M4. Agent tidak pernah tahu protokol perangkatnya.
@@ -69,3 +71,11 @@ Kontrak ada di M0: `backend/schemas/device_contract.py` (`Capability`, `DeviceDe
 - Nilai boolean hanya cocok dengan boolean (`True == 1` di Python tidak diterima diam-diam; driver yang wajib menormalkan).
 
 **Belum:** status `pending` belum pernah dihasilkan (mock belum punya perangkat lambat) — Tahap 3. Shadow hanya di memori (hilang saat restart); jurnal aksi yang tahan restart = Tahap 4 (M11).
+
+## [2026-10-25] Tahap 3 — perangkat lambat (pending) dan "lampu yang mana?"
+
+- **Pending:** driver boleh melempar `CommandAccepted` (bukan `DeviceError`) kalau perangkat menerima perintah tapi baru menjalankannya nanti. `DeviceService` lalu memberi status `pending` tanpa baca ulang (membaca sekarang cuma menunjukkan state lama), menyimpan operasi, dan saat pembacaan berikutnya menunjukkan perubahannya, operasi itu jadi `succeeded` (`get_operation(id)`). `DeviceSnapshot.pending_operations` (kontrak 1.1.0) + pesan "jangan bilang sudah selesai". Bagi model, `pending` **bukan** tool error, tapi hasilnya membawa `note` yang melarang mengaku selesai.
+- **Mock:** `MockHome.make_slow(device_id, reads)` — perintah baru diterapkan setelah `reads` kali pembacaan state (meniru LoRa kelas A yang baru menerima perintah setelah uplink berikutnya); `queued()` untuk melihat antrean. CLI: `/slow <device_id> <reads>`, `/state` menampilkan antrean.
+- **Disambiguasi (Sasha, gerbang Clarifying):** `two_lamp_home()` (lampu utama + lampu baca di ruang tamu; `default_home()` tidak berubah). Setiap tool aktuator membawa aturan "kalau ucapan user cocok dengan lebih dari satu perangkat dan tidak disebut yang mana, tanya dulu", ditambah satu kalimat di system prompt. CLI: `--home dua-lampu`.
+- **Smoke test API asli (2026-10-25):** perangkat lambat → model bilang "sedang diproses", lalu "belum nyala, masih diproses" ✅. "nyalakan lampunya dong" di rumah 2 lampu → bertanya balik dengan dua pilihan ✅. "nyalakan lampu ruang tamu" → model memilih lampu utama tanpa bertanya (tafsiran wajar, dicatat).
+- **Celah yang diketahui:** operasi pending yang tidak pernah terwujud (mis. perintah lain menimpanya) tetap `pending` selamanya — belum ada batas waktu; shadow dan operasi hanya di memori (hilang saat restart) → jurnal aksi M11 (Sprint 4).

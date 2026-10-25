@@ -1,6 +1,6 @@
 # M4 — Tool Registry
 
-> Status: **M4 v1 selesai diimplementasi (2026-09-11), belum di-commit.** 210 test lulus (136 lama tanpa diubah + 74 baru), 3 skip platform-specific di Windows. Belum ada smoke test dengan API key asli.
+> Status (per 2026-10-25): **M4 v1 selesai dan di-commit** (`d54481b`, 2026-09-17), ditambah `AutoLoadPolicy` dan retensi tool (`d327685`, 2026-10-23). Sudah diuji dengan API asli lewat CLI (smoke test 2026-10-23 dan 2026-10-25: alur `find_tools` → aksi, retensi, auto-load read-only). Saat dibuat: 210 test; seluruh proyek sekarang 351.
 > Paper rujukan: **MCP-Zero** (agent meminta tool), **ScaleMCP** (sync via hash), **Tool-to-Agent Retrieval** (indeks gabungan domain↔tool), **EasyTool** (contoh skenario di deskripsi tool), **ToolLLM** (jalan keluar jujur saat tidak ada tool), **Sasha** (false positive dinilai paling buruk). Detail di `Memory Think/PAPER_NOTES.md` kategori #4/#5.
 
 ---

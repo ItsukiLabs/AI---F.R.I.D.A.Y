@@ -1,6 +1,6 @@
 # M0 — Contract Layer
 
-> Status: **Sedang digarap.** Sprint 1, Kategori riset #1 (Agentic AI / Tool Use & Function Calling).
+> Status (per 2026-10-25): **dipakai, berkembang per sprint.** Tool Contract **1.1.0** (Sprint 1, diperluas M4 Sprint 3) dan Device Contract **1.1.0** (Sprint 3, Tahap 2–3) — catatan bertanggal di akhir file. Kontrak Task/Event menyusul saat modulnya digarap (M3, M17). Sprint 1, Kategori riset #1 (Agentic AI / Tool Use & Function Calling).
 > Paper rujukan: MCP (Model Context Protocol), Agent-OS. Detail lengkap di `Memory Think/PAPER_NOTES.md`.
 
 ---

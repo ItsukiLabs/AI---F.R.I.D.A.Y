@@ -10,9 +10,10 @@ reviews (2026-10-25; AWS IoT Shadow style):
 - ``connection`` is whether the latest read reached the device.
 
 Every command gets an ``operation_id`` and ends in one ``CommandStatus``.
-``PENDING`` is defined now for slow devices (e.g. LoRa class A) but only
-produced once the mock simulates them (Sprint 3, stage 3). The id is what
-the M11 action journal will key on.
+``PENDING`` is for slow devices (e.g. LoRa class A): the device accepted
+the command but confirms it later; the operation turns ``SUCCEEDED`` once a
+later read shows the change. The id is what the M11 action journal will key
+on.
 
 Capabilities are named after the state key they control or report, so one
 generic toolset (``backend/devices/tools.py``) can publish tools for any
@@ -29,7 +30,8 @@ from pydantic import BaseModel, Field, field_validator
 
 from backend.schemas.tool_contract import validate_identifier
 
-DEVICE_CONTRACT_VERSION = "1.0.0"
+# 1.0.0 (2026-10-25, stage 2); 1.1.0 (stage 3) - additive: DeviceSnapshot.pending_operations.
+DEVICE_CONTRACT_VERSION = "1.1.0"
 
 
 class Capability(BaseModel):
@@ -143,7 +145,10 @@ class DeviceSnapshot(BaseModel):
     desired_at: str | None = None
     # Every desired value matches the reported one (within tolerance).
     in_sync: bool = True
-    # Set when the device did not answer, so stale values can't pass for fresh ones.
+    # Commands the device accepted but has not confirmed yet (oldest first).
+    pending_operations: list[str] = Field(default_factory=list)
+    # Set when the device did not answer (so stale values can't pass for fresh
+    # ones) or when commands are still pending.
     message: str | None = None
 
 

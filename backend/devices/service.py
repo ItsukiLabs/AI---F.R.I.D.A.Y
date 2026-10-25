@@ -13,7 +13,11 @@ driver:
 - an ``operation_id`` and a final ``CommandStatus`` per command;
 - the A2 rule (decided 2026-10-23): when a command errors, read the state
   back and report what the device actually is. Values are compared with
-  each capability's tolerance, not exact equality.
+  each capability's tolerance, not exact equality;
+- pending commands (stage 3): a slow device that accepts a command but
+  confirms it later raises ``CommandAccepted``; the operation stays
+  ``PENDING`` until a later read shows the change, then becomes
+  ``SUCCEEDED`` (``get_operation``).
 """
 
 from __future__ import annotations
@@ -34,6 +38,14 @@ class DeviceError(RuntimeError):
     """A device refused, did not answer, or did not confirm a command."""
 
 
+class CommandAccepted(Exception):
+    """Raised by a driver when a slow device accepted a command it will apply later.
+
+    Not a failure, so not a ``DeviceError``: the service must not read the
+    state back and call it "failed" just because the change hasn't happened yet.
+    """
+
+
 class DeviceDriver(Protocol):
     def descriptors(self) -> list[DeviceDescriptor]: ...
 
@@ -52,6 +64,12 @@ class DeviceService:
         self._clock = clock
         self._reported: dict[str, tuple[dict[str, Any], str]] = {}
         self._desired: dict[str, tuple[dict[str, Any], str]] = {}
+        self._operations: dict[str, DeviceCommandResult] = {}
+        self._pending: dict[str, list[str]] = {}
+
+    def get_operation(self, operation_id: str) -> DeviceCommandResult | None:
+        """The latest known result of a command (a pending one may have settled since)."""
+        return self._operations.get(operation_id)
 
     # -- devices ----------------------------------------------------------
 
@@ -79,11 +97,43 @@ class DeviceService:
     def _read(self, device_id: str) -> dict[str, Any]:
         reported = self.driver.read_state(device_id)
         self._reported[device_id] = (dict(reported), self._clock())
+        self._settle_pending(device_id, reported)
         return reported
+
+    def _settle_pending(self, device_id: str, reported: dict[str, Any]) -> None:
+        """A pending command whose changes now show up in ``reported`` has succeeded."""
+        waiting = self._pending.get(device_id)
+        if not waiting:
+            return
+        descriptor = self.descriptor(device_id)
+        for operation_id in list(waiting):
+            operation = self._operations[operation_id]
+            if self._matches(descriptor, operation.requested, reported):
+                self._operations[operation_id] = operation.model_copy(
+                    update={
+                        "status": CommandStatus.SUCCEEDED,
+                        "reported": dict(reported),
+                        "message": "confirmed by a later read of the device state",
+                    }
+                )
+                waiting.remove(operation_id)
 
     def _snapshot(self, descriptor: DeviceDescriptor, connection: str) -> DeviceSnapshot:
         reported, reported_at = self._reported.get(descriptor.device_id, ({}, None))
         desired, desired_at = self._desired.get(descriptor.device_id, ({}, None))
+        pending = self._pending.get(descriptor.device_id, [])
+        notes = []
+        if connection != "online":
+            notes.append(
+                f"{descriptor.name} did not answer. 'reported' is the last known state"
+                + (f" (from {reported_at})" if reported_at else " (none known yet)")
+                + "; do not present it as the current state."
+            )
+        if pending:
+            notes.append(
+                f"{len(pending)} command(s) accepted but not confirmed yet; 'desired' shows "
+                "what was asked. Do not say it is done until 'reported' shows it."
+            )
         return DeviceSnapshot(
             device_id=descriptor.device_id,
             connection=connection,
@@ -93,13 +143,8 @@ class DeviceService:
             desired=dict(desired),
             desired_at=desired_at,
             in_sync=self._matches(descriptor, desired, reported),
-            message=None
-            if connection == "online"
-            else (
-                f"{descriptor.name} did not answer. 'reported' is the last known state"
-                + (f" (from {reported_at})" if reported_at else " (none known yet)")
-                + "; do not present it as the current state."
-            ),
+            pending_operations=list(pending),
+            message=" ".join(notes) or None,
         )
 
     @staticmethod
@@ -139,7 +184,7 @@ class DeviceService:
         self._desired[device_id] = (desired, self._clock())
 
         def result(status: CommandStatus, reported: dict[str, Any] | None, message: str | None):
-            return DeviceCommandResult(
+            outcome = DeviceCommandResult(
                 operation_id=operation_id,
                 device_id=device_id,
                 status=status,
@@ -147,9 +192,23 @@ class DeviceService:
                 reported=reported,
                 message=message,
             )
+            self._operations[operation_id] = outcome
+            if status is CommandStatus.PENDING:
+                self._pending.setdefault(device_id, []).append(operation_id)
+            return outcome
 
         try:
             reported = self.driver.apply(device_id, **changes)
+        except CommandAccepted as exc:
+            # No read-back: the change is expected later, and reading now would
+            # only show the old state. ``reported`` is the last known state.
+            last_known = self._reported.get(device_id)
+            return result(
+                CommandStatus.PENDING,
+                dict(last_known[0]) if last_known else None,
+                f"{exc}. Accepted but not confirmed yet: check later with a state read; "
+                "do not tell the user it is done.",
+            )
         except DeviceError as exc:
             try:
                 actual = self._read(device_id)

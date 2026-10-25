@@ -72,7 +72,7 @@ class DeadHome(MockHome):
 
 
 def test_contract_version_and_standard_capabilities():
-    assert DEVICE_CONTRACT_VERSION == "1.0.0"
+    assert DEVICE_CONTRACT_VERSION == "1.1.0"  # stage 3 added pending_operations
     assert TARGET_TEMPERATURE.name == "target_temperature"
     assert CURRENT_TEMPERATURE.writable is False
 

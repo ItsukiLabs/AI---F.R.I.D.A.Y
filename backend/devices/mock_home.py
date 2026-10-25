@@ -38,7 +38,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable
 
-from backend.devices.service import DeviceError, DeviceService
+from backend.devices.service import CommandAccepted, DeviceError, DeviceService
 from backend.devices.tools import build_device_tools
 from backend.registry import SyncReport, ToolCatalog
 from backend.schemas import ToolContract
@@ -84,6 +84,22 @@ class MockDevice:
             raise ValueError(f"unknown device kind {self.kind!r}")
 
 
+def two_lamp_home() -> "MockHome":
+    """``default_home`` plus a reading lamp in the same living room (disambiguation)."""
+    home = default_home()
+    home.add_device(
+        MockDevice(
+            "lampu_baca_ruang_tamu",
+            "Lampu baca ruang tamu",
+            "ruang tamu",
+            LAMP,
+            {"on": False, "brightness": 100},
+        )
+    )
+    home.device("lampu_ruang_tamu").name = "Lampu utama ruang tamu"
+    return home
+
+
 def default_home() -> "MockHome":
     """The home used by tests and the A2 trace: one lamp, one AC, both off."""
     return MockHome(
@@ -114,6 +130,9 @@ class MockHome:
                 raise ValueError(f"duplicate device_id {device.device_id!r}")
             self._devices[device.device_id] = device
         self._failures: dict[str, FailureMode] = {}
+        # Slow devices (stage 3): device_id -> reads a command waits before applying.
+        self._slow: dict[str, int] = {}
+        self._queued: dict[str, list[list[Any]]] = {}
         self.actions: list[dict[str, Any]] = []
 
     # -- inspection -------------------------------------------------------
@@ -172,6 +191,29 @@ class MockHome:
         self.device(device_id)
         self._failures[device_id] = FailureMode(mode)
 
+    def make_slow(self, device_id: str, reads: int) -> None:
+        """Commands to ``device_id`` take effect only after ``reads`` later state reads.
+
+        Simulates a device that confirms late (e.g. LoRa class A, which only
+        receives downlinks after its next uplink). ``reads=0`` makes it normal
+        again; commands already queued still wait for their reads.
+        """
+        self.device(device_id)
+        if reads < 0:
+            raise ValueError("reads must be 0 or more")
+        if reads:
+            self._slow[device_id] = reads
+        else:
+            self._slow.pop(device_id, None)
+
+    def queued(self) -> dict[str, list[dict[str, Any]]]:
+        """Commands accepted by slow devices and not applied yet (for /state and tests)."""
+        return {
+            device_id: [{"changes": dict(changes), "reads_left": left} for left, changes in items]
+            for device_id, items in self._queued.items()
+            if items
+        }
+
     # -- commands ---------------------------------------------------------
 
     def read_state(self, device_id: str) -> dict[str, Any]:
@@ -179,13 +221,27 @@ class MockHome:
         if self._failures.get(device_id) is FailureMode.OFFLINE:
             del self._failures[device_id]
             raise DeviceError(f"{device.name} is offline and did not respond")
+        self._advance_queue(device)
         return copy.deepcopy(device.state)
+
+    def _advance_queue(self, device: MockDevice) -> None:
+        """One read passes for a slow device; commands whose wait is over are applied."""
+        items = self._queued.get(device.device_id, [])
+        for item in items:
+            item[0] -= 1
+        for left, changes in [i for i in items if i[0] <= 0]:
+            device.state.update(changes)
+            self.actions.append({"device_id": device.device_id, "changes": dict(changes)})
+        self._queued[device.device_id] = [i for i in items if i[0] > 0]
 
     def apply(self, device_id: str, **changes: Any) -> dict[str, Any]:
         device = self.device(device_id)
         failure = self._failures.pop(device_id, None)
         if failure is FailureMode.OFFLINE:
             raise DeviceError(f"{device.name} is offline and did not respond")
+        if device_id in self._slow:
+            self._queued.setdefault(device_id, []).append([self._slow[device_id], dict(changes)])
+            raise CommandAccepted(f"{device.name} accepted the command; it takes effect later")
         device.state.update(changes)
         self.actions.append({"device_id": device_id, "changes": dict(changes)})
         if failure is FailureMode.LOST_ACK:
