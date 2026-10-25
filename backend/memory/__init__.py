@@ -15,7 +15,13 @@ from backend.memory.archive_errors import (
 )
 from backend.memory.archive_store import ArchiveStore
 from backend.memory.compaction import compact
-from backend.memory.errors import SessionError, SessionLoadError, SessionSaveError, UnsupportedSessionSchemaError
+from backend.memory.errors import (
+    CompactionError,
+    SessionError,
+    SessionLoadError,
+    SessionSaveError,
+    UnsupportedSessionSchemaError,
+)
 from backend.memory.profile import Profile
 from backend.memory.profile_errors import (
     ProfileError,
@@ -40,6 +46,7 @@ __all__ = [
     "SessionLoadError",
     "SessionSaveError",
     "UnsupportedSessionSchemaError",
+    "CompactionError",
     "Profile",
     "ProfileStore",
     "ProfileError",

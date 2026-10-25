@@ -130,6 +130,12 @@ class Cli:
             for note in getattr(exc, "__notes__", []):
                 self.write(f"[error] {note}")
             return
+        except KeyboardInterrupt as exc:
+            self._show_trace()
+            self.write("[interrupted] turn stopped; what happened so far was saved if it could be")
+            for note in getattr(exc, "__notes__", []):
+                self.write(f"[error] {note}")
+            return
         self._show_trace()
         self.write(f"F.R.I.D.A.Y: {result.text}")
         if result.exceeded_max_iterations:

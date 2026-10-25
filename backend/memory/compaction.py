@@ -18,6 +18,7 @@ import json
 from typing import Any
 
 from backend.agent_core.llm_client import LLMClient
+from backend.memory.errors import CompactionError
 from backend.memory.session import Session
 
 SUMMARIZATION_SYSTEM_PROMPT = (
@@ -80,6 +81,11 @@ def compact(session: Session, llm: LLMClient, keep_recent_messages: int = 6) -> 
 
     Returns False (no-op) when there's no safe cut point — history too
     short, or nothing but one long tool-calling chain.
+
+    Raises ``CompactionError`` when the LLM returns an empty summary, and
+    lets an LLM exception propagate; in both cases the session is left
+    exactly as it was. (Before 2026-10-25 an empty reply kept the old
+    summary but still dropped the old turns from the active context.)
     """
     cut = _find_safe_cut_index(session.messages, keep_recent_messages)
     if cut is None:
@@ -94,7 +100,13 @@ def compact(session: Session, llm: LLMClient, keep_recent_messages: int = 6) -> 
         system=SUMMARIZATION_SYSTEM_PROMPT,
     )
 
-    session.summary = response.text or session.summary
+    summary = (response.text or "").strip()
+    if not summary:
+        raise CompactionError(
+            f"the model returned an empty summary for {len(to_summarize)} message(s)"
+        )
+
+    session.summary = summary
     session.archived_turns.extend(to_summarize)  # M2b hook — not read/pruned by M2a
     session.messages = remaining
     session.compaction_count += 1

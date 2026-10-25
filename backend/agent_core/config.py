@@ -16,6 +16,10 @@ DEFAULT_MEMORY_COMPACTION_THRESHOLD_TOKENS = 6000
 DEFAULT_MEMORY_COMPACTION_SAFETY_MARGIN_TOKENS = 500
 DEFAULT_MEMORY_KEEP_RECENT_MESSAGES = 6
 DEFAULT_MEMORY_RECALL_LIMIT = 5
+# Safety cap, not a tuned value: ~2k tokens per tool result. Real device
+# state, file listings or API payloads must not flood the context in the
+# middle of a turn, where compaction can't run.
+DEFAULT_TOOL_RESULT_MAX_CHARS = 8000
 
 # NOTE: context_limit / reserved_output_tokens / model-specific token
 # budgets are deliberately NOT implemented here. F.R.I.D.A.Y only has one
@@ -71,3 +75,17 @@ def get_memory_keep_recent_messages() -> int:
 def get_memory_recall_default_limit() -> int:
     """How many past turns ``recall_memory`` returns when the model omits ``limit``."""
     return int(os.environ.get("MEMORY_RECALL_DEFAULT_LIMIT") or DEFAULT_MEMORY_RECALL_LIMIT)
+
+
+def get_tool_result_max_chars() -> int:
+    """Longest tool result (serialized) the loop puts into the conversation."""
+    return int(os.environ.get("TOOL_RESULT_MAX_CHARS") or DEFAULT_TOOL_RESULT_MAX_CHARS)
+
+
+def get_timezone_name() -> str | None:
+    """IANA time zone of the home (e.g. ``Asia/Jakarta``); None = the OS local zone.
+
+    A runtime setting, not a profile fact: the home's zone is fixed, and a
+    temporary travel override can come later without changing this default.
+    """
+    return os.environ.get("FRIDAY_TIMEZONE") or None

@@ -36,7 +36,12 @@ from __future__ import annotations
 import logging
 
 from backend.agent_core.llm_client import LLMClient
-from backend.agent_core.loop import DEFAULT_SYSTEM_PROMPT, AgentResult, run_agent
+from backend.agent_core.loop import (
+    DEFAULT_MAX_ITERATIONS,
+    DEFAULT_SYSTEM_PROMPT,
+    AgentResult,
+    run_agent,
+)
 from backend.agent_core.tool_registry import ToolRegistry
 from backend.agent_core.tools.profile_tools import make_profile_tools
 from backend.agent_core.tools.recall_tools import make_recall_tools
@@ -116,7 +121,7 @@ class Orchestrator:
         session_store: SessionStore | None = None,
         profile_store: ProfileStore | None = None,
         archive_store: ArchiveStore | None = None,
-        max_iterations: int = 6,
+        max_iterations: int = DEFAULT_MAX_ITERATIONS,
         system: str = DEFAULT_SYSTEM_PROMPT,
         catalog: ToolCatalog | None = None,
         catalog_auto_load: AutoLoadPolicy | str = AutoLoadPolicy.READ_ONLY,
@@ -200,7 +205,9 @@ class Orchestrator:
                 session=session,
                 profile=profile,
             )
-        except Exception as exc:
+        except (Exception, KeyboardInterrupt) as exc:
+            # Ctrl+C mid-turn is handled like a failure: a device may already
+            # have acted, so the partial turn is kept before re-raising.
             # A stored turn always ends on an assistant message, so a trailing
             # user message (the input or tool results) means this turn was cut
             # off mid-way. If compaction failed before the input was appended,

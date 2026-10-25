@@ -16,6 +16,7 @@ M2 (Memory), not M1.
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -25,12 +26,25 @@ from backend.agent_core.config import (
     get_memory_compaction_safety_margin_tokens,
     get_memory_compaction_threshold_tokens,
     get_memory_keep_recent_messages,
+    get_tool_result_max_chars,
 )
 from backend.agent_core.llm_client import LLMClient, LLMResponse, ToolCallRequest
 from backend.agent_core.tool_registry import ToolNotLoadedError, ToolRegistry
 from backend.memory.compaction import compact
+from backend.memory.errors import CompactionError
 from backend.memory.profile import Profile
 from backend.memory.session import Session
+
+logger = logging.getLogger(__name__)
+
+# Raised from 6 (2026-10-25): find_tools costs one step, and a device task
+# such as "find the lamp tool, turn it on, read it back" needs several.
+DEFAULT_MAX_ITERATIONS = 10
+
+# Exception text that reaches the model is cut to this length; the full
+# traceback goes to the local log. Device errors stay readable (they carry
+# the read-back state), while a huge or noisy message can't flood the context.
+TOOL_ERROR_MAX_CHARS = 500
 
 DEFAULT_SYSTEM_PROMPT = (
     "You are F.R.I.D.A.Y, a personal AI assistant. Use the available tools "
@@ -86,26 +100,71 @@ def _execute_tool_call(call: ToolCallRequest, registry: ToolRegistry) -> tuple[s
     try:
         result = registered.fn(**call.arguments)
     except Exception as exc:  # tool failures become reflections, not crashes
-        return f"Tool '{call.name}' failed: {exc}", True
+        logger.warning("tool %s failed", call.name, exc_info=True)
+        return f"Tool '{call.name}' failed ({type(exc).__name__}): {_clip(str(exc))}", True
 
-    return (result if isinstance(result, str) else json.dumps(result)), False
+    if isinstance(result, str):
+        return _limit_size(result), False
+    try:
+        content = json.dumps(result, ensure_ascii=False)
+    except (TypeError, ValueError) as exc:
+        logger.warning("tool %s returned a non-JSON result", call.name, exc_info=True)
+        return (
+            f"Tool '{call.name}' returned a result that could not be serialized "
+            f"({type(exc).__name__}). This is a bug in the tool, not in your call."
+        ), True
+    return _limit_size(content), False
+
+
+def _clip(text: str) -> str:
+    if len(text) <= TOOL_ERROR_MAX_CHARS:
+        return text
+    return text[:TOOL_ERROR_MAX_CHARS] + " …"
+
+
+def _limit_size(content: str) -> str:
+    """Cap a tool result's size, keeping it valid JSON when it is cut.
+
+    A cut result is wrapped as ``{"truncated": true, "original_chars": N,
+    "preview": "..."}`` so the model knows it saw only part of it, instead of
+    receiving a JSON document that stops mid-way.
+    """
+    limit = get_tool_result_max_chars()
+    if len(content) <= limit:
+        return content
+    return json.dumps(
+        {
+            "truncated": True,
+            "original_chars": len(content),
+            "preview": content[:limit],
+            "note": "The result was too large and was cut. Ask for something narrower if you need the rest.",
+        },
+        ensure_ascii=False,
+    )
 
 
 def run_agent(
     user_input: str,
     registry: ToolRegistry,
     llm: LLMClient,
-    max_iterations: int = 6,
+    max_iterations: int = DEFAULT_MAX_ITERATIONS,
     system: str = DEFAULT_SYSTEM_PROMPT,
     session: Session | None = None,
     profile: Profile | None = None,
 ) -> AgentResult:
+    warnings: list[str] = []
     if session is not None:
         if session.needs_compaction(
             get_memory_compaction_threshold_tokens(),
             get_memory_compaction_safety_margin_tokens(),
         ):
-            compact(session, llm, keep_recent_messages=get_memory_keep_recent_messages())
+            try:
+                compact(session, llm, keep_recent_messages=get_memory_keep_recent_messages())
+            except CompactionError as exc:
+                # The session is untouched, so the turn can go on with the
+                # full (just larger) context; the caller still hears about it.
+                logger.warning("compaction skipped for session %s: %s", session.session_id, exc)
+                warnings.append(f"compaction skipped: {exc} (context kept as is)")
         session.append_user_message(user_input)
         messages = session.messages
     else:
@@ -130,7 +189,7 @@ def run_agent(
         messages.append(_assistant_message(response))
 
         if not response.tool_calls:
-            return AgentResult(text=response.text or "", iterations=iteration)
+            return AgentResult(text=response.text or "", iterations=iteration, warnings=warnings)
 
         tool_results = []
         for call in response.tool_calls:
@@ -157,4 +216,5 @@ def run_agent(
         text=text,
         exceeded_max_iterations=True,
         iterations=max_iterations,
+        warnings=warnings,
     )

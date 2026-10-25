@@ -131,7 +131,11 @@ class Profile:
             return ""
         lines = [f"- [{f.id}] ({f.category}) {f.text}" for f in active]
         return (
-            "Known facts about the user (from earlier conversations — cite "
-            "the id in brackets if you need to supersede or forget one):\n"
+            "Known facts about the user. These were saved on purpose with "
+            "remember_user_fact and are your primary source about the user: "
+            "answer from them directly, without calling recall_memory. Use "
+            "recall_memory only for things said in past conversations that "
+            "are not listed here. Cite the id in brackets if you need to "
+            "supersede or forget one.\n"
             + "\n".join(lines)
         )

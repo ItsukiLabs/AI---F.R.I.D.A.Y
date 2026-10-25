@@ -30,3 +30,12 @@ class UnsupportedSessionSchemaError(SessionLoadError):
     "did loading fail" can catch SessionLoadError; code that wants to
     distinguish "your data is from an incompatible version" can catch this.
     """
+
+
+class CompactionError(SessionError):
+    """Compaction produced no usable summary; the session was left untouched.
+
+    Not a persistence failure, but it belongs here: it guards the same rule
+    ("never silently lose session content"). Raised before any mutation, so
+    the caller can carry on with the full, uncompacted context.
+    """
