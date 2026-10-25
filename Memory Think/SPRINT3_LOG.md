@@ -355,3 +355,14 @@
 - **Catatan teknis:** beberapa file sempat tersimpan dengan akhir baris CRLF oleh skrip edit; dinormalkan kembali ke LF (repo memakai `core.autocrlf=input`).
 - **File yang dibuat/diubah:** `backend/agent_core/{config,loop}.py`, `backend/agent_core/tools/time_tool.py`, `backend/memory/{compaction,errors,profile,__init__}.py`, `backend/orchestrator/orchestrator.py`, `backend/cli.py`, `backend/tests/test_hardening_stage1.py` (baru), `.github/workflows/tests.yml` (baru), `requirements.txt`, `.env.example`, entry ini.
 - **Belum dikerjakan / TODO lanjutan:** belum di-commit (menunggu instruksi user). Berikutnya Tahap 2: kontrak Device (desired/reported/koneksi/pending/operation_id, `target_temperature`, tool spesifik + `apply` generik, toleransi nilai analog).
+
+## [2026-10-25] Commit + push dokumen tinjauan, feedback 4 AI, dan Tahap 1
+
+- **Apa yang dikerjakan:** Atas instruksi user ("commit dan push, sertakan semua pembahasan di log"), test dijalankan ulang (**303 passed, 3 skipped**), lalu dibuat 3 commit dan di-push ke `origin/master`:
+  1. `211304a` — `docs: project review for external feedback + feedback from 4 AI models` (`FRIDAY_PROJECT_REVIEW.md` + 4 file di `Memory Think/feedback_another_ai/`, disimpan apa adanya).
+  2. `4526593` — `fix(core): stage 1 hardening after external review` (kode Tahap 1, test baru, CI `.github/workflows/tests.yml`, `requirements.txt` + `tzdata`, `.env.example`, dan entry log hari ini: dokumen tinjauan, ringkasan feedback, usulan rencana, Tahap 1).
+  3. Commit docs berisi entry ini (precedent `2586d33`, `bb4bb59`, `e850b65`).
+- **Pembahasan hari ini yang tercatat di log (urut):** rekap posisi → pembuatan `FRIDAY_PROJECT_REVIEW.md` (+ permintaan susulan menyertakan potongan kode) → 4 feedback dibaca dan diringkas per model → usulan rencana 5 tahap + yang ditunda/ditolak → user setuju (3 keputusan memakai usulan asisten) → Tahap 1 selesai → commit + push (entry ini).
+- **Catatan:** CI baru akan berjalan pertama kali karena push ini; hasilnya dicek di tab Actions GitHub. `.env` tidak ikut commit (gitignored).
+- **File yang dibuat/diubah:** `Memory Think/SPRINT3_LOG.md` — entry ini.
+- **Belum dikerjakan / TODO lanjutan:** Tahap 2 (kontrak Device: desired/reported/koneksi, status perintah + `operation_id`, `target_temperature`/`current_temperature`, tool spesifik + `apply` generik, toleransi nilai analog) — menunggu aba-aba user.
