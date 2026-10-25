@@ -48,3 +48,24 @@ Belum ada lampu sungguhan yang disambungkan. Yang ada adalah **rumah boneka** di
 ## [2026-10-23] Baca ulang state setelah perintah gagal (A2 keputusan 2)
 
 Tool aktuator (`home_set_power`, `lamp_set_brightness`, `ac_set_temperature`) sekarang lewat `MockHomeAdapter._command`. Kalau device melempar `DeviceError`, adapter membaca state lagi: perubahan sudah terjadi → hasil sukses dengan `note` ("did not confirm ..., but reading the state back shows the change took effect"); belum terjadi → error berisi state aktual; baca ulang ikut gagal → error "actual state unknown". Pola ini yang harus diikuti adapter nyata: setiap device butuh operasi baca state. `MockHome.apply` sendiri tidak berubah (test `test_mock_home.py` untuk `LOST_ACK` tetap berlaku di level rumah).
+
+## [2026-10-25] Tahap 2 — kontrak Device + lapisan generik (device shadow)
+
+Mengikuti feedback 4 model AI (lihat `SPRINT3_LOG.md` 2026-10-25). M5 sekarang tiga lapis, sehingga adapter nyata nanti cukup menulis lapis pertama:
+
+| Lapis | File | Isi |
+|---|---|---|
+| Driver (spesifik protokol) | `backend/devices/mock_home.py` (`MockHome`) | `descriptors()`, `read_state(id)`, `apply(id, **changes)`. Nanti: Home Assistant / MQTT. |
+| Layanan (sama untuk semua driver) | `backend/devices/service.py` (`DeviceService`) | Validasi perubahan terhadap kemampuan perangkat **sebelum** driver disentuh; `operation_id` per perintah; status akhir `succeeded`/`failed`/`pending`/`unknown`; shadow `desired` (permintaan terakhir, tetap ada walau gagal) vs `reported` (laporan terakhir + waktunya); baca ulang setelah error (A2 keputusan 2) dengan **toleransi** nilai analog. |
+| Tool (dibuat dari kemampuan) | `backend/devices/tools.py` (`build_device_tools`) | `home_list_devices`, `home_get_state`, `home_set_power`, dan `home_set_<kemampuan>` untuk setiap kemampuan yang bisa diubah. Kemampuan baru (mis. `fan_speed`) otomatis dapat tool tanpa kode baru. |
+
+Kontrak ada di M0: `backend/schemas/device_contract.py` (`Capability`, `DeviceDescriptor`, `DeviceSnapshot`, `CommandStatus`, `DeviceCommandResult`, `DEVICE_CONTRACT_VERSION = 1.0.0`), dengan kemampuan standar `POWER` (`on`), `BRIGHTNESS`, `TARGET_TEMPERATURE` (toleransi 0,5), `CURRENT_TEMPERATURE` (hanya baca).
+
+**Perubahan yang terlihat model:**
+- `temperature` diganti `target_temperature` (yang diminta) + `current_temperature` (suhu ruangan terukur; AC simulasi 29,0 °C, tetap).
+- Nama tool: `lamp_set_brightness` → `home_set_brightness`, `ac_set_temperature` → `home_set_target_temperature`. `home_get_state` dan `home_set_power` versi 2.0.0.
+- Hasil aksi sekarang hasil perintah (`operation_id`, `status`, `requested`, `reported`, `message`). Status selain `succeeded` → tool error berisi status + `operation_id`, supaya model tidak bisa membacanya sebagai sukses.
+- **Perubahan perilaku yang disengaja:** membaca perangkat offline bukan lagi tool error, tapi snapshot `connection: offline`, `stale: true`, `reported` = state terakhir yang diketahui + waktunya, dan `message` yang melarang menyajikannya sebagai state sekarang.
+- Nilai boolean hanya cocok dengan boolean (`True == 1` di Python tidak diterima diam-diam; driver yang wajib menormalkan).
+
+**Belum:** status `pending` belum pernah dihasilkan (mock belum punya perangkat lambat) — Tahap 3. Shadow hanya di memori (hilang saat restart); jurnal aksi yang tahan restart = Tahap 4 (M11).

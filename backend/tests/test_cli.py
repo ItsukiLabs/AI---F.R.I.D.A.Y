@@ -124,7 +124,8 @@ def test_state_and_fail_commands_drive_the_mock_home(tmp_path):
 
     assert f"{LAMP} (Lampu ruang tamu, ruang tamu)" in h.text
     assert f"next command to {LAMP} will fail: offline" in h.text
-    assert "<- [error]" in h.text and "offline" in h.text
+    # Since stage 2 (2026-10-25) an offline read is a stale snapshot, not a tool error.
+    assert '<- [ok] {"device_id": "lampu_ruang_tamu", "connection": "offline"' in h.text
 
 
 @pytest.mark.parametrize(

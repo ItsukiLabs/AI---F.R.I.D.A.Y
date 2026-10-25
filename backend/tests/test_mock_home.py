@@ -105,11 +105,11 @@ def test_unknown_device_is_a_device_error():
 
 def test_diff_reports_only_mismatching_named_keys():
     home = default_home()
-    home.apply("ac_kamar", on=True, temperature=26)
+    home.apply("ac_kamar", on=True, target_temperature=26)
 
-    assert home.diff({"ac_kamar": {"on": True, "temperature": 26}}) == {}
-    assert home.diff({"ac_kamar": {"temperature": 22}, "lampu_ruang_tamu": {"on": False}}) == {
-        "ac_kamar": {"temperature": (22, 26)}
+    assert home.diff({"ac_kamar": {"on": True, "target_temperature": 26}}) == {}
+    assert home.diff({"ac_kamar": {"target_temperature": 22}, "lampu_ruang_tamu": {"on": False}}) == {
+        "ac_kamar": {"target_temperature": (22, 26)}
     }
 
 
@@ -129,14 +129,14 @@ def test_adapter_publishes_read_and_actuator_tools_in_one_domain():
         "home_list_devices",
         "home_get_state",
         "home_set_power",
-        "lamp_set_brightness",
-        "ac_set_temperature",
+        "home_set_brightness",
+        "home_set_target_temperature",
     }
     assert {c.domain for c in contracts.values()} == {MOCK_HOME_DOMAIN}
     assert contracts["home_get_state"].annotations.read_only_hint is True
     assert contracts["home_set_power"].annotations.read_only_hint is False
     assert all(c.examples for c in contracts.values())
-    assert contracts["lamp_set_brightness"].input_schema["properties"]["device_id"]["enum"] == [
+    assert contracts["home_set_brightness"].input_schema["properties"]["device_id"]["enum"] == [
         "lampu_ruang_tamu"
     ]
 
@@ -145,16 +145,16 @@ def test_tools_drive_the_home():
     home = default_home()
     fns = _tool_fns(home)
 
-    fns["lamp_set_brightness"](device_id="lampu_ruang_tamu", brightness=40)
-    fns["ac_set_temperature"](device_id="ac_kamar", temperature=26)
+    fns["home_set_brightness"](device_id="lampu_ruang_tamu", brightness=40)
+    fns["home_set_target_temperature"](device_id="ac_kamar", target_temperature=26)
 
     assert home.diff(
         {
             "lampu_ruang_tamu": {"on": True, "brightness": 40},
-            "ac_kamar": {"on": True, "temperature": 26},
+            "ac_kamar": {"on": True, "target_temperature": 26},
         }
     ) == {}
-    assert fns["home_get_state"](device_id="ac_kamar")["state"]["temperature"] == 26
+    assert fns["home_get_state"](device_id="ac_kamar")["reported"]["target_temperature"] == 26
     assert len(fns["home_list_devices"]()["devices"]) == 2
 
 
@@ -181,8 +181,8 @@ def test_sync_is_idempotent_and_picks_up_a_new_device_without_restart():
     assert len(first.added) == 5
     assert not again.changed
     # The device_id enum changed, so every tool naming devices has a new content_hash.
-    assert set(after_new_device.updated) == {"home_get_state", "home_set_power", "lamp_set_brightness"}
-    assert after_new_device.unchanged == ("ac_set_temperature", "home_list_devices")
+    assert set(after_new_device.updated) == {"home_get_state", "home_set_power", "home_set_brightness"}
+    assert after_new_device.unchanged == ("home_list_devices", "home_set_target_temperature")
     assert catalog.get("home_set_power").provider == MOCK_HOME_PROVIDER
 
 
@@ -194,8 +194,8 @@ def test_sync_removes_tools_whose_device_kind_is_gone():
     lamp_only = MockHome([d for d in default_home().devices() if d.kind == "lamp"])
     report = MockHomeAdapter(lamp_only).sync_into(catalog)
 
-    assert report.removed == ("ac_set_temperature",)
-    assert not catalog.has("ac_set_temperature")
+    assert report.removed == ("home_set_target_temperature",)
+    assert not catalog.has("home_set_target_temperature")
 
 
 @pytest.mark.parametrize(
@@ -203,8 +203,8 @@ def test_sync_removes_tools_whose_device_kind_is_gone():
     [
         ("nyalakan lampu", "home_set_power"),
         ("lampunya udah nyala belum", "home_get_state"),
-        ("atur suhu AC", "ac_set_temperature"),
-        ("agak gelap", "lamp_set_brightness"),
+        ("atur suhu AC", "home_set_target_temperature"),
+        ("agak gelap", "home_set_brightness"),
     ],
 )
 def test_catalog_search_finds_device_tools_from_everyday_phrases(query, expected):

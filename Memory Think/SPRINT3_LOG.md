@@ -366,3 +366,36 @@
 - **Catatan:** CI baru akan berjalan pertama kali karena push ini; hasilnya dicek di tab Actions GitHub. `.env` tidak ikut commit (gitignored).
 - **File yang dibuat/diubah:** `Memory Think/SPRINT3_LOG.md` — entry ini.
 - **Belum dikerjakan / TODO lanjutan:** Tahap 2 (kontrak Device: desired/reported/koneksi, status perintah + `operation_id`, `target_temperature`/`current_temperature`, tool spesifik + `apply` generik, toleransi nilai analog) — menunggu aba-aba user.
+
+## [2026-10-25] `gh` terpasang + CI pertama hijau; Tahap 2 (kontrak Device) selesai
+
+- **`gh` (GitHub CLI):** user bertanya apa itu `gh`, lokasi pemasangan `winget` (selalu `C:\Program Files\GitHub CLI\`, bukan folder aktif), dan HTTPS vs SSH (disarankan HTTPS: remote repo sudah HTTPS, `gh` mengatur kredensial git, port 443 jarang diblokir). User memasang dan login (akun `Lux7San`, HTTPS, scope `repo`/`workflow`/`gist`/`read:org`). Sesi ini memanggil `gh` lewat path lengkap karena PATH belum ter-refresh.
+- **CI pertama (`c69fe6a`): hijau** — ubuntu 306 passed (3 test izin file POSIX ikut jalan dan lulus untuk pertama kali), windows 303 passed + 3 skipped. Peringatan: `actions/checkout@v4` dan `actions/setup-python@v5` memakai Node.js 20 yang usang → dinaikkan ke `@v7` (keduanya `node24`, rilis v7.0.0 Jun/Jul 2026, input `python-version`/`cache` dicek masih ada).
+- **User: "lanjut ke tahap 2, masih Sprint 3?"** → ya; Tahap 1–3 = sisa Sprint 3, Tahap 4–5 = awal Sprint 4.
+- **Tahap 2 dikerjakan** (detail di `M5_device_layer.md` bagian 2026-10-25, ringkasan kontrak di `M0_contract_layer.md`):
+  1. Kontrak Device M0 `backend/schemas/device_contract.py` (1.0.0).
+  2. `DeviceService` (`backend/devices/service.py`): validasi sebelum driver disentuh, `operation_id`, `CommandStatus`, shadow desired/reported, baca ulang dengan toleransi. `DeviceError` pindah ke sini (tetap diekspor dari `backend.devices`).
+  3. `build_device_tools` (`backend/devices/tools.py`): tool dibuat dari kemampuan; status bukan `succeeded` → tool error berisi status + `operation_id`.
+  4. `MockHome` jadi driver tipis + `descriptors()`; AC: `target_temperature` + `current_temperature` (29,0). `MockHomeAdapter` tetap ada (CLI/test tidak perlu berubah cara pakainya).
+- **Test lama yang diubah (semua karena perubahan nama/key yang disengaja):** `test_mock_home.py` (nama tool `home_set_brightness`/`home_set_target_temperature`, key `target_temperature`, `home_get_state` → `["reported"]`), `test_a2_trace.py` S9 (snapshot AC dengan key baru), `test_cli.py` (baca perangkat offline sekarang snapshot `connection: offline`, bukan `[error]`).
+- **Temuan saat menulis test:** `True == 1` di Python membuat laporan `1` dianggap "nyala" → perbandingan boolean dibuat ketat (driver wajib menormalkan).
+- **Test:** file baru `backend/tests/test_device_layer.py` (29 kasus). **332 passed, 3 skipped** (sebelumnya 303). Mutation check: toleransi dicopot → 2 gagal; validasi dicopot → 3; baca ulang dicopot → 2; `stale` dicopot → 1; status non-sukses tidak jadi error → 4.
+- **File yang dibuat/diubah:** baru `backend/schemas/device_contract.py`, `backend/devices/{service,tools}.py`, `backend/tests/test_device_layer.py`; diubah `backend/devices/{__init__,mock_home}.py`, 3 file test di atas, `.github/workflows/tests.yml`, `Memory Think/{M5_device_layer,M0_contract_layer}.md`, entry ini.
+- **Belum dikerjakan / TODO lanjutan:** belum di-commit (menunggu instruksi user). Berikutnya Tahap 3 (penutup Sprint 3): state `pending` di mock (perangkat lambat), disambiguasi ("lampu yang mana?"), koreksi catatan M0/M1/M2 + README, `STATUS.md`.
+
+## [2026-10-25] Diskusi Node.js di CI + CI dikunci ke SHA commit
+
+- **Pertanyaan user:** kenapa Node.js 20, bukannya 22/24, karena ada isu keamanan. **Jawaban:** F.R.I.D.A.Y tidak memakai Node.js sama sekali (Python murni); Node hanya runtime di dalam dua komponen CI GitHub (`actions/checkout`, `actions/setup-python`). Versi `@v4`/`@v5` di file CI pertama (kesalahan asisten memakai versi lama) membawa Node 20, yang sudah EOL (April 2026, tanpa patch keamanan). Sudah dinaikkan ke v7 (Node 24) di Tahap 2. Isu spesifik "2–4 file" yang disebut user tidak diketahui asisten — diminta link/nama kasusnya kalau ada, tidak ditebak. Risiko bagi proyek kecil: runner GitHub sementara, tanpa secret, test pakai LLM palsu.
+- **Disetujui user, dikerjakan:** komponen CI dikunci ke **SHA commit penuh** (tag seperti `@v7` bisa dipindah pemiliknya atau peretas — pola serangan rantai pasok GitHub Actions): `actions/checkout@3d3c42e…` (v7.0.1, rilis 2026-07-20) dan `actions/setup-python@5fda3b9…` (**v7.0.0**, rilis 2026-07-20; v7.1.0 dilewati karena baru dirilis 2026-10-22, terlalu baru). SHA diambil dari ref tag di repo resmi lewat `gh api` dan dicek ada di repo itu; `node24` dan input `python-version`/`cache` dicek. Ditambah `permissions: contents: read` (CI hanya membaca repo).
+- **File yang dibuat/diubah:** `.github/workflows/tests.yml`, entry ini.
+- **Belum dikerjakan / TODO lanjutan:** CI dengan SHA baru terverifikasi setelah push. Saat memperbarui komponen CI, SHA dan komentar versi diganti bersamaan. Commit Tahap 2 menunggu instruksi user.
+
+## [2026-10-25] `setup-python` → v7.1.0 + cek Node.js/PHP di komputer user
+
+- **User bertanya kenapa tidak v7.1.0.** Dicek lewat `gh` (release notes + compare v7.0.0...v7.1.0, 16 commit): v7.1.0 berisi 2 PR perbaikan keamanan "npm audit high severity" (#1347, #1350: `undici` 3 advisory, `brace-expansion` 2, `js-yaml`, `fast-xml-parser`) yang mengubah `dist/setup/index.js` = kode yang benar-benar jalan di CI; sisanya fitur `mirror`, pesan error, cache 6.3.0, bump Dependabot. Tidak ada issue baru sejak rilis 2026-10-22; tag resmi `v7` sudah menunjuk v7.1.0. **Alasan asisten memilih v7.0.0 ("terlalu baru") keliru** — versi itu membawa celah yang sudah diketahui. User setuju → dikunci ke `actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0`.
+- **Alasan user minta versi terbaru:** berita celah keamanan baru di PHP dan Node.js. Dicek di komputer user (bukan bagian F.R.I.D.A.Y):
+  - **Node.js v24.20.0** (`C:\Program Files\nodejs`, juga menjalankan Claude Code). Terbaru di jalur 24 LTS: **v24.22.1 (2026-10-20), rilis keamanan** — CVE-2026-105481/105482/105483/106069/106073/106074/111497 (http, dns, tls, permission model, crypto, brotli) + OpenSSL 3.5.9, undici 7.30.1, sertifikat root NSS 3.131.1. User tertinggal 3 rilis.
+  - **PHP 8.4.4** (XAMPP Lite, `C:\xampp_lite8\apps\php`, build Feb 2025). Terbaru: **PHP 8.4.27 (21–22 Okt 2026), rilis keamanan** (GHSA-w8hw-w9fx-j79w, GHSA-6wmf-4rv5-p3rp, banyak perbaikan use-after-free). User tertinggal 23 rilis patch.
+  - Keduanya disarankan diperbarui oleh user sendiri (instalasi sistem, di luar repo); asisten tidak menjalankan upgrade.
+- **File yang dibuat/diubah:** `.github/workflows/tests.yml`, entry ini.
+- **Belum dikerjakan / TODO lanjutan:** commit Tahap 2 + perubahan CI (menunggu instruksi user); update Node.js/PHP oleh user.

@@ -409,7 +409,7 @@ def test_s9_partial_success_within_one_step_is_recorded_per_call(tmp_path):
 
     assert w.home.snapshot() == {
         LAMP: {"on": True, "brightness": 100},
-        "ac_kamar": {"on": False, "temperature": 24},
+        "ac_kamar": {"on": False, "target_temperature": 24, "current_temperature": 29.0},
     }
     assert [r["is_error"] for r in _tool_results(w.saved_messages())] == [False, True]
 
