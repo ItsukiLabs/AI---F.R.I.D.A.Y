@@ -399,3 +399,11 @@
   - Keduanya disarankan diperbarui oleh user sendiri (instalasi sistem, di luar repo); asisten tidak menjalankan upgrade.
 - **File yang dibuat/diubah:** `.github/workflows/tests.yml`, entry ini.
 - **Belum dikerjakan / TODO lanjutan:** commit Tahap 2 + perubahan CI (menunggu instruksi user); update Node.js/PHP oleh user.
+
+## [2026-10-25] Commit + push Tahap 2 dan CI
+
+- **Apa yang dikerjakan:** Atas instruksi user, test dijalankan ulang (**332 passed, 3 skipped**), lalu di-push ke `origin/master`:
+  1. `24125dc` — `ci: pin actions to commit SHAs (Node 24), read-only permissions` (`actions/checkout` v7.0.1, `actions/setup-python` v7.1.0, `permissions: contents: read`).
+  2. `fadca24` — `feat(devices): device contract + generic device layer (stage 2)` (kontrak Device, `DeviceService`, `build_device_tools`, mock sebagai driver, test baru + 3 test lama yang disesuaikan, catatan M0/M5, entry log hari ini).
+  3. Commit docs berisi entry ini.
+- **Belum dikerjakan / TODO lanjutan:** cek hasil CI dengan SHA baru (lewat `gh run list`). Berikutnya Tahap 3: `pending` di mock, disambiguasi, koreksi catatan M0/M1/M2 + README, `STATUS.md`.
