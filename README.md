@@ -33,7 +33,9 @@ cp .env.example .env    # lalu isi ANTHROPIC_API_KEY; opsional FRIDAY_TIMEZONE=A
 .venv/Scripts/python.exe -m backend.cli --home dua-lampu # 2 lampu di ruang tamu
 ```
 
-Perintah di dalam CLI: `/state`, `/fail <device> offline|lost_ack`, `/slow <device> <reads>`, `/trace on|off`, `/new`, `/session`, `/help`, `/quit`.
+Perintah di dalam CLI: `/state`, `/fail <device> offline|lost_ack`, `/slow <device> <reads>`, `/journal`, `/journal ack`, `/trace on|off`, `/new`, `/session`, `/help`, `/quit`.
+
+**Izin (Sprint 4):** setiap tool harus terdaftar di `config/permissions.json` (`read_only` / `standard` / `critical`, plus `"confirm": true` untuk `standard` yang ingin ditanyakan dulu). Tool yang tidak terdaftar tidak pernah dijalankan. Aksi yang perlu konfirmasi ditanyakan langsung di terminal (y/n), bukan lewat AI. Setiap perintah perangkat dicatat di jurnal aksi (`backend/journal/data/actions.db`).
 
 **Test** (LLM palsu, gratis, tanpa API key):
 
@@ -56,7 +58,8 @@ CI (GitHub Actions, `.github/workflows/tests.yml`) menjalankan test yang sama di
 | `dal/` | — | Helper pencarian FTS5 bersama. |
 | `cli.py` | — | CLI terminal. |
 | `tests/` | — | Seluruh test (pytest). |
-| `security/` | M11 | Belum ada (Sprint 4). |
+| `security/` | M11 | Versi mini: daftar izin pemilik, gerbang izin, slot konfirmasi (`TerminalConfirmer`). |
+| `journal/` | M11 | Jurnal aksi SQLite (setiap perintah perangkat dicatat sebelum dan sesudah dikirim). |
 | `persona/` | M15 | Belum ada (Sprint 10). |
 
 ## Dokumentasi

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "confirmation_ttl_seconds": 180,
+  "tools": {
+    "get_current_time": {"tier": "read_only"},
+    "find_tools": {"tier": "read_only"},
+    "recall_memory": {"tier": "read_only"},
+    "remember_user_fact": {"tier": "standard"},
+    "forget_user_fact": {"tier": "standard"},
+    "home_list_devices": {"tier": "read_only"},
+    "home_get_state": {"tier": "read_only"},
+    "home_set_power": {"tier": "standard"},
+    "home_set_brightness": {"tier": "standard"},
+    "home_set_target_temperature": {"tier": "standard"}
+  }
+}

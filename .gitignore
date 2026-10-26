@@ -43,6 +43,9 @@ backend/memory/archive/*.db-journal
 backend/memory/archive/*.db-wal
 backend/memory/archive/*.db-shm
 
+# Sprint 4 action journal (local record of device commands, not source)
+backend/journal/data/
+
 # Testing / coverage
 .pytest_cache/
 .coverage

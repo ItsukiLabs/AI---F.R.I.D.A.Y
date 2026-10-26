@@ -192,8 +192,9 @@ def test_format_trace_truncates_long_results():
     assert line.endswith("...") and len(line) < 200
 
 
-def test_main_exits_on_eof(monkeypatch, capsys):
+def test_main_exits_on_eof(monkeypatch, capsys, tmp_path):
     monkeypatch.setattr("backend.cli.get_llm_client", lambda: FakeLLMClient([]))
+    monkeypatch.setenv("FRIDAY_ACTION_JOURNAL_FILE", str(tmp_path / "actions.db"))
 
     def eof(_prompt):
         raise EOFError

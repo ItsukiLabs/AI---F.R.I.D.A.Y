@@ -6,10 +6,18 @@ variables don't justify the dependency.
 """
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_PERMISSIONS_FILE = _REPO_ROOT / "config" / "permissions.json"
+DEFAULT_ACTION_JOURNAL_FILE = _REPO_ROOT / "backend" / "journal" / "data" / "actions.db"
+# A command a slow device accepted but never confirmed becomes "unknown" after
+# this long (decided 2026-10-26: 1 minute; some ACs take a while to answer).
+DEFAULT_DEVICE_PENDING_TIMEOUT_SECONDS = 60
 
 DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5"
 DEFAULT_MEMORY_COMPACTION_THRESHOLD_TOKENS = 6000
@@ -89,3 +97,19 @@ def get_timezone_name() -> str | None:
     temporary travel override can come later without changing this default.
     """
     return os.environ.get("FRIDAY_TIMEZONE") or None
+
+
+def get_permissions_file() -> Path:
+    """The owner's permission settings (M11 mini, ``backend/security/permissions.py``)."""
+    return Path(os.environ.get("FRIDAY_PERMISSIONS_FILE") or DEFAULT_PERMISSIONS_FILE)
+
+
+def get_action_journal_file() -> Path:
+    """SQLite file of the action journal (``backend/journal/store.py``)."""
+    return Path(os.environ.get("FRIDAY_ACTION_JOURNAL_FILE") or DEFAULT_ACTION_JOURNAL_FILE)
+
+
+def get_device_pending_timeout_seconds() -> float:
+    return float(
+        os.environ.get("DEVICE_PENDING_TIMEOUT_SECONDS") or DEFAULT_DEVICE_PENDING_TIMEOUT_SECONDS
+    )

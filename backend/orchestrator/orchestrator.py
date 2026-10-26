@@ -21,6 +21,11 @@ Tools come from two places (M4, Sprint 3):
 Both may be given at once; a tool name present in both raises when the turn
 registry is composed (fail loud rather than silently pick one).
 
+``gate`` (M11 mini, Sprint 4) is the permission gate every tool call passes;
+it also decides what auto-loading counts as read-only. The CLI always
+passes one built from ``config/permissions.json``; ``None`` (tests, library
+use) runs tools without a permission check.
+
 This is the generic agent+memory+tools glue the README describes for
 ``backend/orchestrator/``. It is *not* M14 Multi-Agent Orchestration
 (Sprint 9), whose scope is coordinating several agents.
@@ -58,6 +63,7 @@ from backend.registry import (
     make_discovery_tool,
     recently_used_tool_names,
 )
+from backend.security import PermissionGate
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +132,7 @@ class Orchestrator:
         catalog: ToolCatalog | None = None,
         catalog_auto_load: AutoLoadPolicy | str = AutoLoadPolicy.READ_ONLY,
         tool_retention_turns: int | None = DEFAULT_TOOL_RETENTION_TURNS,
+        gate: PermissionGate | None = None,
     ) -> None:
         self.llm = llm
         self.registry = registry if registry is not None else ToolRegistry()
@@ -139,6 +146,7 @@ class Orchestrator:
         self.archive_store = archive_store or ArchiveStore()
         self.max_iterations = max_iterations
         self.system = system
+        self.gate = gate
 
     def _turn_registry(self, profile: Profile, session: Session) -> ToolRegistry:
         turn_registry = ToolRegistry()
@@ -160,7 +168,12 @@ class Orchestrator:
             turn_registry.register(contract, fn)
         if self.catalog is not None:
             turn_registry.set_missing_tool_resolver(
-                make_catalog_resolver(self.catalog, turn_registry, self.catalog_auto_load)
+                make_catalog_resolver(
+                    self.catalog,
+                    turn_registry,
+                    self.catalog_auto_load,
+                    is_read_only=self.gate.is_read_only if self.gate is not None else None,
+                )
             )
         return turn_registry
 
@@ -204,6 +217,7 @@ class Orchestrator:
                 system=self.system,
                 session=session,
                 profile=profile,
+                gate=self.gate,
             )
         except (Exception, KeyboardInterrupt) as exc:
             # Ctrl+C mid-turn is handled like a failure: a device may already

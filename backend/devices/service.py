@@ -17,21 +17,30 @@ driver:
 - pending commands (stage 3): a slow device that accepts a command but
   confirms it later raises ``CommandAccepted``; the operation stays
   ``PENDING`` until a later read shows the change, then becomes
-  ``SUCCEEDED`` (``get_operation``).
+  ``SUCCEEDED`` (``get_operation``). With ``pending_timeout_seconds`` set,
+  one still unconfirmed after that long becomes ``UNKNOWN`` (stage 4);
+- the action journal (stage 4, ``backend/journal``): when one is given,
+  every command is written as ``prepared`` *before* the driver is touched
+  (if that write fails the command is not sent) and its outcome after.
 """
 
 from __future__ import annotations
 
+import logging
+import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Callable, Protocol
 
+from backend.journal import ActionJournal, JournalError
 from backend.schemas.device_contract import (
     CommandStatus,
     DeviceCommandResult,
     DeviceDescriptor,
     DeviceSnapshot,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DeviceError(RuntimeError):
@@ -59,17 +68,45 @@ def _now() -> str:
 
 
 class DeviceService:
-    def __init__(self, driver: DeviceDriver, clock: Callable[[], str] = _now) -> None:
+    def __init__(
+        self,
+        driver: DeviceDriver,
+        clock: Callable[[], str] = _now,
+        *,
+        journal: ActionJournal | None = None,
+        pending_timeout_seconds: float | None = None,
+        monotonic: Callable[[], float] = time.monotonic,
+    ) -> None:
         self.driver = driver
         self._clock = clock
+        self.journal = journal
+        self.pending_timeout_seconds = pending_timeout_seconds
+        self._monotonic = monotonic
         self._reported: dict[str, tuple[dict[str, Any], str]] = {}
         self._desired: dict[str, tuple[dict[str, Any], str]] = {}
         self._operations: dict[str, DeviceCommandResult] = {}
         self._pending: dict[str, list[str]] = {}
+        self._pending_since: dict[str, float] = {}
 
     def get_operation(self, operation_id: str) -> DeviceCommandResult | None:
-        """The latest known result of a command (a pending one may have settled since)."""
+        """The latest known result of a command (a pending one may have settled or expired since)."""
+        for device_id in list(self._pending):
+            self._expire_pending(device_id)
         return self._operations.get(operation_id)
+
+    def _record(self, outcome: DeviceCommandResult) -> None:
+        """Keep the latest result of an operation, and journal it (best effort)."""
+        self._operations[outcome.operation_id] = outcome
+        if self.journal is None:
+            return
+        try:
+            self.journal.finish(
+                outcome.operation_id, outcome.status.value, outcome.reported, outcome.message
+            )
+        except JournalError:
+            # The command already happened; its entry stays "prepared" and is
+            # reported as uncertain on the next start (journal.recover()).
+            logger.warning("journal: outcome of %s not recorded", outcome.operation_id, exc_info=True)
 
     # -- devices ----------------------------------------------------------
 
@@ -109,16 +146,45 @@ class DeviceService:
         for operation_id in list(waiting):
             operation = self._operations[operation_id]
             if self._matches(descriptor, operation.requested, reported):
-                self._operations[operation_id] = operation.model_copy(
-                    update={
-                        "status": CommandStatus.SUCCEEDED,
-                        "reported": dict(reported),
-                        "message": "confirmed by a later read of the device state",
-                    }
+                self._record(
+                    operation.model_copy(
+                        update={
+                            "status": CommandStatus.SUCCEEDED,
+                            "reported": dict(reported),
+                            "message": "confirmed by a later read of the device state",
+                        }
+                    )
                 )
                 waiting.remove(operation_id)
+                self._pending_since.pop(operation_id, None)
+
+    def _expire_pending(self, device_id: str) -> None:
+        """A pending command unconfirmed for longer than the timeout becomes ``UNKNOWN``."""
+        if self.pending_timeout_seconds is None:
+            return
+        waiting = self._pending.get(device_id)
+        if not waiting:
+            return
+        now = self._monotonic()
+        for operation_id in list(waiting):
+            if now - self._pending_since.get(operation_id, now) < self.pending_timeout_seconds:
+                continue
+            self._record(
+                self._operations[operation_id].model_copy(
+                    update={
+                        "status": CommandStatus.UNKNOWN,
+                        "message": (
+                            f"no confirmation within {self.pending_timeout_seconds:g} s; "
+                            "whether it took effect is unknown. Read the state to find out."
+                        ),
+                    }
+                )
+            )
+            waiting.remove(operation_id)
+            del self._pending_since[operation_id]
 
     def _snapshot(self, descriptor: DeviceDescriptor, connection: str) -> DeviceSnapshot:
+        self._expire_pending(descriptor.device_id)
         reported, reported_at = self._reported.get(descriptor.device_id, ({}, None))
         desired, desired_at = self._desired.get(descriptor.device_id, ({}, None))
         pending = self._pending.get(descriptor.device_id, [])
@@ -168,6 +234,8 @@ class DeviceService:
         Invalid commands (unknown device, unknown or read-only key, wrong
         type, out of range) raise ``ValueError``/``DeviceError`` before the
         driver is touched. Everything else ends in a ``DeviceCommandResult``.
+        If the journal cannot record the command, ``DeviceError`` is raised
+        and the command is not sent.
         """
         descriptor = self.descriptor(device_id)
         if not changes:
@@ -179,6 +247,13 @@ class DeviceService:
             capability.check(value)
 
         operation_id = uuid.uuid4().hex
+        if self.journal is not None:
+            try:
+                self.journal.prepare(operation_id, device_id, dict(changes))
+            except JournalError as exc:
+                raise DeviceError(
+                    f"command not sent: the action journal could not record it ({exc})"
+                ) from exc
         desired = dict(self._desired.get(device_id, ({}, None))[0])
         desired.update(changes)
         self._desired[device_id] = (desired, self._clock())
@@ -192,9 +267,10 @@ class DeviceService:
                 reported=reported,
                 message=message,
             )
-            self._operations[operation_id] = outcome
+            self._record(outcome)
             if status is CommandStatus.PENDING:
                 self._pending.setdefault(device_id, []).append(operation_id)
+                self._pending_since[operation_id] = self._monotonic()
             return outcome
 
         try:

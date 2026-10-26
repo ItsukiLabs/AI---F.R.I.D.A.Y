@@ -79,3 +79,9 @@ Kontrak ada di M0: `backend/schemas/device_contract.py` (`Capability`, `DeviceDe
 - **Disambiguasi (Sasha, gerbang Clarifying):** `two_lamp_home()` (lampu utama + lampu baca di ruang tamu; `default_home()` tidak berubah). Setiap tool aktuator membawa aturan "kalau ucapan user cocok dengan lebih dari satu perangkat dan tidak disebut yang mana, tanya dulu", ditambah satu kalimat di system prompt. CLI: `--home dua-lampu`.
 - **Smoke test API asli (2026-10-25):** perangkat lambat → model bilang "sedang diproses", lalu "belum nyala, masih diproses" ✅. "nyalakan lampunya dong" di rumah 2 lampu → bertanya balik dengan dua pilihan ✅. "nyalakan lampu ruang tamu" → model memilih lampu utama tanpa bertanya (tafsiran wajar, dicatat).
 - **Celah yang diketahui:** operasi pending yang tidak pernah terwujud (mis. perintah lain menimpanya) tetap `pending` selamanya — belum ada batas waktu; shadow dan operasi hanya di memori (hilang saat restart) → jurnal aksi M11 (Sprint 4).
+
+## Tahap 4 (2026-10-26): jurnal aksi + batas waktu pending
+
+- `DeviceService(..., journal=, pending_timeout_seconds=, monotonic=)`. Dengan jurnal, setiap perintah dicatat `prepared` **sebelum** driver disentuh (gagal mencatat berarti perintah tidak dikirim), lalu hasilnya dicatat (juga saat pending kemudian berhasil atau kedaluwarsa). Detail di `M11_security.md`.
+- Pending yang tidak terkonfirmasi lewat dari `pending_timeout_seconds` (CLI: 60 detik) menjadi `UNKNOWN` dan keluar dari `pending_operations`. Tanpa nilai ini perilakunya sama seperti Sprint 3. Celah "pending tanpa batas waktu" di atas sudah ditutup; shadow tetap di memori, tetapi jejak perintahnya kini ada di jurnal.
+- `MockHomeAdapter(home, journal=..., pending_timeout_seconds=...)` meneruskan keduanya ke `DeviceService`.

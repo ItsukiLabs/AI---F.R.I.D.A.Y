@@ -1,4 +1,5 @@
 from backend.agent_core.tools.recall_tools import (
+    DATA_NOTICE,
     RECALL_MAX_LIMIT,
     RECALL_MAX_TEXT_CHARS,
     RECALL_MEMORY_CONTRACT,
@@ -64,6 +65,7 @@ def test_recall_no_match_shape(tmp_path):
         "count": 0,
         "hits": [],
         "note": "No past conversation turns matched. Try fewer or different keywords.",
+        "data_notice": DATA_NOTICE,
     }
 
 

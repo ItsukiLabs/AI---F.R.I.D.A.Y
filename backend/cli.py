@@ -12,6 +12,12 @@ say "the lamp is on" while the lamp is off; the system prompt tells the
 model to read device state rather than trust history (A2), so that mismatch
 is a useful check rather than a bug.
 
+Since Sprint 4 (stage 4) every tool call passes the permission gate built
+from ``config/permissions.json``; a tool that needs the owner's "yes" is
+asked here in the terminal (y/n), never through the model. Every device
+command is written to the action journal; on start, commands an earlier run
+left uncertain are listed (``/journal``), never retried.
+
 Slash commands control the harness, never the model; see ``HELP``.
 """
 
@@ -23,6 +29,11 @@ import logging
 from datetime import datetime
 from typing import Any, Callable
 
+from backend.agent_core.config import (
+    get_action_journal_file,
+    get_device_pending_timeout_seconds,
+    get_permissions_file,
+)
 from backend.agent_core.llm_client import LLMClient, get_llm_client
 from backend.agent_core.tool_registry import ToolRegistry
 from backend.agent_core.tools.time_tool import TIME_TOOL_CONTRACT, get_current_time
@@ -34,10 +45,17 @@ from backend.devices import (
     default_home,
     two_lamp_home,
 )
+from backend.journal import ActionJournal, JournalEntry
 from backend.memory.session import Session
 from backend.memory.store import SessionStore
 from backend.orchestrator import Orchestrator
 from backend.registry import ToolCatalog
+from backend.security import (
+    PermissionConfigError,
+    PermissionGate,
+    TerminalConfirmer,
+    load_permission_policy,
+)
 
 DEFAULT_SESSION_ID = "cli"
 
@@ -51,6 +69,8 @@ HELP = """Commands:
                                  (mode: offline | lost_ack)
   /slow <device_id> <reads>      commands to that device take effect only after
                                  <reads> later state reads (0 = normal again)
+  /journal                       last 10 device commands from the action journal
+  /journal ack                   mark the uncertain ("unknown") ones as checked
   /trace on|off                  show the tool calls of each turn (default on)
   /new                           start a new session
   /session                       show the current session id
@@ -64,13 +84,21 @@ def build_orchestrator(
     home: MockHome,
     *,
     pin_home_tools: bool = False,
+    journal: ActionJournal | None = None,
+    pending_timeout_seconds: float | None = None,
     **orchestrator_kwargs: Any,
 ) -> Orchestrator:
-    """The production wiring: time tool always installed, home tools in the catalog."""
+    """The production wiring: time tool always installed, home tools in the catalog.
+
+    ``main()`` also passes the permission ``gate``, the action ``journal`` and
+    the pending timeout; tests leave out what they don't exercise.
+    """
     registry = ToolRegistry()
     registry.register(TIME_TOOL_CONTRACT, get_current_time)
     catalog = ToolCatalog()
-    MockHomeAdapter(home).sync_into(catalog, pinned=pin_home_tools)
+    MockHomeAdapter(
+        home, journal=journal, pending_timeout_seconds=pending_timeout_seconds
+    ).sync_into(catalog, pinned=pin_home_tools)
     return Orchestrator(llm, registry=registry, catalog=catalog, **orchestrator_kwargs)
 
 
@@ -104,6 +132,18 @@ def format_trace(turn: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
+def format_journal_entry(entry: JournalEntry) -> str:
+    when = entry.created_at[:19].replace("T", " ")
+    approval = f", approved: {entry.approval}" if entry.approval else ""
+    line = (
+        f"  {when} {entry.device_id} {json.dumps(entry.requested, ensure_ascii=False)} "
+        f"-> {entry.status} ({entry.tool_name or '?'}{approval})"
+    )
+    if entry.message and entry.status != "succeeded":
+        line += f"\n      {entry.message}"
+    return line
+
+
 def format_state(home: MockHome) -> list[str]:
     rows = [
         f"  {d.device_id} ({d.name}, {d.room}): {json.dumps(d.state)}" for d in home.devices()
@@ -124,12 +164,28 @@ class Cli:
         home: MockHome,
         session_id: str = DEFAULT_SESSION_ID,
         write: Callable[[str], None] = print,
+        journal: ActionJournal | None = None,
     ) -> None:
         self.orch = orchestrator
         self.home = home
         self.session_id = session_id
         self.write = write
+        self.journal = journal
         self.trace = True
+
+    def startup_report(self) -> None:
+        """List device commands an earlier run left uncertain. Nothing is retried."""
+        if self.journal is None:
+            return
+        uncertain = self.journal.recover()
+        if not uncertain:
+            return
+        self.write(
+            f"[journal] {len(uncertain)} device command(s) from an earlier run have an "
+            "unknown outcome (not retried). Check the device, then /journal ack:"
+        )
+        for entry in uncertain:
+            self.write(format_journal_entry(entry))
 
     def handle(self, line: str) -> bool:
         """Process one input line. Returns False when the CLI should exit."""
@@ -184,6 +240,8 @@ class Cli:
             self._fail(args)
         elif name == "/slow":
             self._slow(args)
+        elif name == "/journal" and args in ([], ["ack"]):
+            self._journal(args)
         elif name == "/trace" and args in (["on"], ["off"]):
             self.trace = args[0] == "on"
             self.write(f"trace {args[0]}")
@@ -210,6 +268,19 @@ class Cli:
             self.write(f"{exc}; /state lists the device ids")
             return
         self.write(f"next command to {device_id} will fail: {mode.lower()}")
+
+    def _journal(self, args: list[str]) -> None:
+        if self.journal is None:
+            self.write("no action journal in this run")
+            return
+        if args == ["ack"]:
+            self.write(f"{self.journal.mark_reviewed()} uncertain command(s) marked as checked")
+            return
+        entries = self.journal.recent(10)
+        if not entries:
+            self.write("the action journal is empty")
+        for entry in reversed(entries):
+            self.write(format_journal_entry(entry))
 
     def _slow(self, args: list[str]) -> None:
         if len(args) != 2 or not args[1].isdigit():
@@ -238,12 +309,25 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR)
+    try:
+        policy = load_permission_policy(get_permissions_file())
+    except PermissionConfigError as exc:
+        raise SystemExit(f"F.R.I.D.A.Y cannot start without valid permission settings: {exc}")
+    journal = ActionJournal(get_action_journal_file())
     home = HOMES[args.home]()
-    orchestrator = build_orchestrator(get_llm_client(), home, pin_home_tools=args.pin_home)
-    cli = Cli(orchestrator, home, args.session)
+    orchestrator = build_orchestrator(
+        get_llm_client(),
+        home,
+        pin_home_tools=args.pin_home,
+        journal=journal,
+        pending_timeout_seconds=get_device_pending_timeout_seconds(),
+        gate=PermissionGate(policy, TerminalConfirmer()),
+    )
+    cli = Cli(orchestrator, home, args.session, journal=journal)
 
     print(f"F.R.I.D.A.Y CLI - session '{cli.session_id}'. Mock home, real LLM (uses API credits).")
     print("/help for commands, /quit to exit.")
+    cli.startup_report()
     while True:
         try:
             line = input("you> ")

@@ -220,8 +220,13 @@ def make_catalog_resolver(
     catalog: ToolCatalog,
     turn_registry: ToolRegistry,
     policy: AutoLoadPolicy | str = AutoLoadPolicy.READ_ONLY,
+    is_read_only: Callable[[str], bool] | None = None,
 ) -> MissingToolResolver:
     """Missing-tool resolver for ``turn_registry``: auto-load or explain, per ``policy``.
+
+    ``is_read_only`` decides what counts as read-only; since Sprint 4 the
+    orchestrator passes the owner's permission settings here. Without it,
+    the tool's own ``read_only_hint`` is used.
 
     Default ``READ_ONLY``: reading a device's state skips the extra
     ``find_tools`` step, but a tool that changes the world is only callable
@@ -234,7 +239,10 @@ def make_catalog_resolver(
         if not catalog.has(name):
             return None
         contract = catalog.get(name).contract
-        read_only = contract.annotations.read_only_hint
+        if is_read_only is not None:
+            read_only = is_read_only(name)
+        else:
+            read_only = contract.annotations.read_only_hint
         if policy is AutoLoadPolicy.ALL or (policy is AutoLoadPolicy.READ_ONLY and read_only):
             entry = catalog.get(name)
             turn_registry.bind(entry.contract, entry.fn)

@@ -40,6 +40,7 @@ from typing import Any, Callable
 
 from backend.devices.service import CommandAccepted, DeviceError, DeviceService
 from backend.devices.tools import build_device_tools
+from backend.journal import ActionJournal
 from backend.registry import SyncReport, ToolCatalog
 from backend.schemas import ToolContract
 from backend.schemas.device_contract import (
@@ -252,10 +253,19 @@ class MockHome:
 class MockHomeAdapter:
     """Publishes a ``MockHome`` as catalog tools under one provider and one domain."""
 
-    def __init__(self, home: MockHome, provider: str = MOCK_HOME_PROVIDER) -> None:
+    def __init__(
+        self,
+        home: MockHome,
+        provider: str = MOCK_HOME_PROVIDER,
+        *,
+        journal: ActionJournal | None = None,
+        pending_timeout_seconds: float | None = None,
+    ) -> None:
         self.home = home
         self.provider = validate_identifier(provider, "provider")
-        self.service = DeviceService(home)
+        self.service = DeviceService(
+            home, journal=journal, pending_timeout_seconds=pending_timeout_seconds
+        )
 
     def sync_into(self, catalog: ToolCatalog, *, pinned: bool = False) -> SyncReport:
         """Publish the current device set; call again after the home changes."""
