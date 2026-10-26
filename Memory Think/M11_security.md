@@ -75,6 +75,24 @@ F.R.I.D.A.Y sekarang punya **penjaga pintu** dan **buku catatan**:
 
 Kesimpulan: belum ada kebocoran, tetapi B dan E tidak benar-benar memicu jebakannya. Tahap 5 perlu skenario yang memaksa jebakan terbaca, plus aturan "baca data luar → aksi wajib konfirmasi" (disetujui user, dikerjakan di Tahap 5).
 
+## Revisi 2026-10-26: antrean konfirmasi (dari kasus user "TV lalu AC")
+
+- **Bahasa manusia:** `make_action_describer(service)` (`backend/devices/tools.py`) dipasang ke `PermissionGate.describer` oleh `build_orchestrator`. Pertanyaannya berbunyi "💡 Lampu ruang tamu: nyalakan" atau "❄️ AC kamar: atur suhu target ke 22°C". Kalau describer error, format kembali ke `tool(args)`.
+- **Tanya ulang + titipan:** jawaban `TerminalConfirmer` yang bukan y/n masuk `deferred`, lalu pertanyaan diulang **sekali** bila belum hangus.
+  - `ConfirmationAnswer.shown_at` membuat batas waktu dihitung dari saat pertanyaan terakhir ditampilkan (3 menit baru).
+  - Kalau kedua kalinya masih bukan y/n, pertanyaan dibatalkan.
+- **Pemberitahuan sekali** lewat `notify` ketika pertanyaan hangus ("… TIDAK dijalankan … Ketik ulang perintahnya") atau dibatalkan.
+- **Antrean diproses:** `Cli._run_deferred()` mengerjakan isi titipan berurutan setelah turn selesai, seolah-olah baru diketik. Antrean pasti berhenti, karena:
+  - hanya kalimat yang diketik pemilik yang bisa masuk;
+  - setiap kalimat diambil sekali;
+  - model tidak bisa menambah isinya.
+
+  `/quit` di dalam titipan tetap keluar.
+- **Ditolak user:** `/ulang` (mengirim ulang perintah lama), karena khawatir memicu pengulangan tanpa sengaja. **Ditolak asisten:** pengingat berulang otomatis (terminal tidak bisa menyela dan bisa mendorong asal jawab "y"); dipertimbangkan lagi untuk mode suara.
+- Uji AI asli (±$0,05):
+  - Lampu ditanya, AC menyela, y, y → keduanya menyala sesuai urutan.
+  - Jawaban datang setelah 4 menit → lampu TIDAK menyala dan pemilik diberi tahu; AC dari titipan ditanya dan menyala.
+
 ## Celah yang diketahui
 
 - `find_tools` masih menampilkan `permission_tier` versi tool, bukan versi pemilik (hanya kosmetik; keputusan izin tetap dari pemilik).

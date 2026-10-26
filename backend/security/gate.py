@@ -17,7 +17,14 @@ writes can pass for approval. A confirmer turns whatever the owner did into
 
 The gate treats them all alike: ``unclear`` counts as no, an answer must be
 for the exact request it was asked for (``request_id``), and an answer that
-arrives after ``confirmation_ttl_seconds`` is refused.
+arrives after ``confirmation_ttl_seconds`` is refused. The time limit
+counts from when the question was last *shown*: a confirmer that asks again
+(see ``TerminalConfirmer``) reports that moment in ``shown_at``.
+
+Questions name the device and the action in plain words when a
+``describer`` is given ("💡 Lampu ruang tamu: nyalakan"), so the owner knows
+exactly what the "yes" is for. When a question expires or is cancelled, the
+owner is told once (``notify``) what was *not* done.
 """
 
 from __future__ import annotations
@@ -47,8 +54,16 @@ class ConfirmationRequest:
     tier: PermissionTier
     asked_at: datetime
     expires_at: datetime
+    # Plain-words version for the owner, e.g. "💡 Lampu ruang tamu: nyalakan".
+    summary: str | None = None
+
+    @property
+    def ttl(self) -> timedelta:
+        return self.expires_at - self.asked_at
 
     def describe(self) -> str:
+        if self.summary:
+            return self.summary
         return f"{self.tool_name}({json.dumps(self.arguments, ensure_ascii=False)})"
 
 
@@ -58,10 +73,16 @@ class ConfirmationAnswer:
     verdict: Verdict
     source: str  # how the owner answered: "terminal", later "voice", "camera"
     detail: str | None = None
+    # When the question this answers was last shown; None = when first asked.
+    shown_at: datetime | None = None
 
 
 class Confirmer(Protocol):
     def confirm(self, request: ConfirmationRequest) -> ConfirmationAnswer: ...
+
+
+# Turns a tool call into plain words for the owner, or None if it can't.
+Describer = Callable[[str, dict[str, Any]], "str | None"]
 
 
 @dataclass(frozen=True)
@@ -85,10 +106,12 @@ class PermissionGate:
         policy: PermissionPolicy,
         confirmer: Confirmer | None = None,
         clock: Callable[[], datetime] = _utcnow,
+        describer: Describer | None = None,
     ) -> None:
         self.policy = policy
         self.confirmer = confirmer
         self._clock = clock
+        self.describer = describer
 
     def is_read_only(self, tool_name: str) -> bool:
         return self.policy.is_read_only(tool_name)
@@ -122,6 +145,12 @@ class PermissionGate:
                 ),
             )
         asked_at = self._clock()
+        summary = None
+        if self.describer is not None:
+            try:
+                summary = self.describer(tool_name, arguments)
+            except Exception:  # a plain-words label is a nicety, never a blocker
+                summary = None
         request = ConfirmationRequest(
             request_id=uuid.uuid4().hex,
             tool_name=tool_name,
@@ -129,6 +158,7 @@ class PermissionGate:
             tier=tier,
             asked_at=asked_at,
             expires_at=asked_at + timedelta(seconds=self.policy.confirmation_ttl_seconds),
+            summary=summary,
         )
         try:
             answer = self.confirmer.confirm(request)
@@ -137,8 +167,18 @@ class PermissionGate:
 
         if answer.request_id != request.request_id:
             return self._refused(tier, "the answer was for a different request")
-        if self._clock() > request.expires_at:
-            return self._refused(tier, "the owner's answer came after the confirmation expired")
+        shown_at = max(answer.shown_at or request.asked_at, request.asked_at)
+        if self._clock() > shown_at + request.ttl:
+            minutes = request.ttl.total_seconds() / 60
+            self._notify(
+                f"{request.describe()} TIDAK dijalankan: pertanyaannya sudah lewat "
+                f"{minutes:g} menit. Ketik ulang perintahnya kalau masih mau."
+            )
+            return self._refused(
+                tier,
+                "the owner's answer came after the confirmation expired; tell the user "
+                "they can repeat the request if they still want it",
+            )
         if answer.verdict is Verdict.YES:
             return GateDecision(allowed=True, tier=tier, approval=answer.source)
         if answer.verdict is Verdict.NO:
@@ -151,7 +191,18 @@ class PermissionGate:
                     "cancelled at their answer; do not retry unless they ask again."
                 ),
             )
+        self._notify(f"{request.describe()} dibatalkan: jawabannya bukan y/n.")
         return self._refused(tier, "the owner's answer was unclear, which counts as no")
+
+    def _notify(self, text: str) -> None:
+        """Tell the owner once, through the confirmer if it can (best effort)."""
+        notify = getattr(self.confirmer, "notify", None)
+        if notify is None:
+            return
+        try:
+            notify(text)
+        except Exception:
+            pass
 
     @staticmethod
     def _refused(tier: PermissionTier, reason: str) -> GateDecision:
@@ -167,8 +218,24 @@ _YES = {"y", "ya", "yes", "iya"}
 _NO = {"n", "no", "tidak", "nggak", "gak", "enggak"}
 
 
+def _verdict(reply: str) -> Verdict:
+    reply = reply.strip().lower()
+    if reply in _YES:
+        return Verdict.YES
+    if reply in _NO:
+        return Verdict.NO
+    return Verdict.UNCLEAR
+
+
 class TerminalConfirmer:
-    """Asks the owner in the terminal: the y/n answer goes straight to the gate."""
+    """Asks the owner in the terminal: the y/n answer goes straight to the gate.
+
+    A reply that isn't y/n is usually a new request typed while the question
+    was waiting ("eh, nyalakan AC juga"). It is not thrown away: it goes to
+    ``deferred`` for the CLI to run after this turn, and the question is
+    asked **once** more, with a fresh time limit, if the first one has not
+    expired yet. A second reply that isn't y/n counts as no.
+    """
 
     source = "terminal"
 
@@ -176,20 +243,47 @@ class TerminalConfirmer:
         self,
         read: Callable[[str], str] = input,
         write: Callable[[str], None] = print,
+        clock: Callable[[], datetime] = _utcnow,
     ) -> None:
         self._read = read
         self._write = write
+        self._clock = clock
+        # Requests typed while a question was waiting, oldest first.
+        self.deferred: list[str] = []
 
     def confirm(self, request: ConfirmationRequest) -> ConfirmationAnswer:
-        self._write(
-            f"[konfirmasi] F.R.I.D.A.Y mau menjalankan {request.describe()} "
-            f"(tingkat: {request.tier.value})."
+        self._write(f"[konfirmasi] {request.describe()} (tingkat: {request.tier.value})")
+        reply = self._ask()
+        shown_at = request.asked_at
+        if _verdict(reply) is Verdict.UNCLEAR:
+            self._defer(reply)
+            if self._clock() <= request.expires_at:
+                self._write(f"[konfirmasi] Pertanyaan ini belum dijawab: {request.describe()}")
+                shown_at = self._clock()
+                reply = self._ask()
+                if _verdict(reply) is Verdict.UNCLEAR:
+                    self._defer(reply)
+        return ConfirmationAnswer(
+            request.request_id,
+            _verdict(reply),
+            self.source,
+            detail=reply.strip() or None,
+            shown_at=shown_at,
         )
-        reply = self._read("Jalankan? (y/n) ").strip().lower()
-        if reply in _YES:
-            verdict = Verdict.YES
-        elif reply in _NO:
-            verdict = Verdict.NO
-        else:
-            verdict = Verdict.UNCLEAR
-        return ConfirmationAnswer(request.request_id, verdict, self.source, detail=reply or None)
+
+    def notify(self, text: str) -> None:
+        self._write(f"[konfirmasi] {text}")
+
+    def take_deferred(self) -> list[str]:
+        """Hand over the deferred requests (oldest first) and forget them."""
+        deferred, self.deferred = self.deferred, []
+        return deferred
+
+    def _ask(self) -> str:
+        return self._read("Jalankan? (y/n) ")
+
+    def _defer(self, reply: str) -> None:
+        text = reply.strip()
+        if text:
+            self.deferred.append(text)
+            self._write(f'[konfirmasi] "{text}" disimpan dulu, diproses setelah pertanyaan ini.')

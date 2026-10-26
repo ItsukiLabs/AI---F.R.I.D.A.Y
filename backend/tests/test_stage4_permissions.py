@@ -419,3 +419,178 @@ def test_auto_load_follows_the_owner_tier_not_the_tool_hint(tmp_path):
 
     [result] = _results(llm)
     assert result["is_error"] and "not loaded" in result["content"]
+
+
+# -- stage 4 revision (2026-10-26): plain words, re-ask, deferred requests ----
+
+
+class Script:
+    """Terminal replies, each typed after ``seconds`` pass on ``clock``."""
+
+    def __init__(self, clock, *replies):
+        self.clock = clock
+        self.replies = list(replies)
+        self.prompts = 0
+
+    def __call__(self, _prompt):
+        self.prompts += 1
+        seconds, text = self.replies.pop(0)
+        self.clock.now += timedelta(seconds=seconds)
+        return text
+
+
+def _terminal(clock, *replies):
+    out = []
+    script = Script(clock, *replies)
+    confirmer = TerminalConfirmer(read=script, write=out.append, clock=clock)
+    gate = PermissionGate(_policy(t={"tier": "critical"}), confirmer, clock=clock)
+    return gate, confirmer, script, out
+
+
+def test_a_new_request_typed_during_a_question_is_kept_and_the_question_asked_again():
+    clock = Clock()
+    gate, confirmer, script, out = _terminal(clock, (5, "eh tolong nyalakan ac!"), (5, "y"))
+
+    decision = gate.check("t", {})
+
+    assert decision.allowed
+    assert script.prompts == 2
+    assert confirmer.take_deferred() == ["eh tolong nyalakan ac!"]
+    assert confirmer.take_deferred() == []
+    assert any("belum dijawab" in line for line in out)
+    assert any("disimpan dulu" in line for line in out)
+
+
+def test_two_answers_that_are_not_y_or_n_cancel_and_say_so():
+    clock = Clock()
+    gate, confirmer, script, out = _terminal(clock, (1, "nyalakan ac"), (1, "hmm"))
+
+    decision = gate.check("t", {})
+
+    assert not decision.allowed and "unclear" in decision.message
+    assert script.prompts == 2  # asked again only once
+    assert confirmer.take_deferred() == ["nyalakan ac", "hmm"]
+    assert "dibatalkan" in out[-1]
+
+
+def test_the_question_asked_again_gets_a_fresh_time_limit():
+    clock = Clock()
+    # 170 s after the first question, then 100 s after the second: 270 s in
+    # total, but only 100 s since the question was last shown.
+    gate, _, _, _ = _terminal(clock, (170, "nyalakan ac"), (100, "y"))
+    assert gate.check("t", {}).allowed
+
+
+def test_the_fresh_time_limit_still_expires():
+    clock = Clock()
+    gate, _, _, out = _terminal(clock, (170, "nyalakan ac"), (181, "y"))
+
+    decision = gate.check("t", {})
+
+    assert not decision.allowed and "expired" in decision.message
+    assert "TIDAK dijalankan" in out[-1] and "3 menit" in out[-1]
+
+
+def test_an_expired_question_is_not_asked_again_but_the_new_request_is_kept():
+    clock = Clock()
+    gate, confirmer, script, out = _terminal(clock, (181, "nyalakan ac"))
+
+    decision = gate.check("t", {})
+
+    assert not decision.allowed and "expired" in decision.message
+    assert script.prompts == 1
+    assert confirmer.take_deferred() == ["nyalakan ac"]
+    assert "Ketik ulang" in out[-1]
+
+
+def test_a_plain_yes_or_no_sends_no_notice():
+    for answer in ("y", "n"):
+        clock = Clock()
+        gate, _, _, out = _terminal(clock, (1, answer))
+        gate.check("t", {})
+        assert not any("dibatalkan" in line or "TIDAK" in line for line in out)
+
+
+def test_questions_name_the_device_and_action_in_plain_words(tmp_path):
+    policy = load_permission_policy(DEFAULT_PERMISSIONS_FILE)
+    for name in ("home_set_power", "home_set_target_temperature"):
+        policy.tools[name] = policy.tools[name].model_copy(update={"confirm": True})
+    confirmer = FakeConfirmer(Verdict.YES)
+    llm, orch = _orchestrator(
+        tmp_path,
+        default_home(),
+        [
+            _calls(("home_set_power", {"device_id": LAMP, "on": True})),
+            _calls(("home_set_target_temperature", {"device_id": AC, "target_temperature": 22})),
+            _text("ok"),
+        ],
+        policy,
+        confirmer,
+    )
+
+    orch.run_turn("nyalakan lampu lalu AC 22", "s1")
+
+    assert [r.describe() for r in confirmer.asked] == [
+        "💡 Lampu ruang tamu: nyalakan",
+        "❄️ AC kamar: atur suhu target ke 22°C",
+    ]
+
+
+def test_a_broken_describer_falls_back_to_the_tool_call():
+    def broken(name, arguments):
+        raise RuntimeError("boom")
+
+    confirmer = FakeConfirmer()
+    PermissionGate(_policy(t={"tier": "critical"}), confirmer, describer=broken).check("t", {"a": 1})
+    assert confirmer.asked[0].describe() == 't({"a": 1})'
+
+
+def _cli_with_terminal(tmp_path, responses, replies):
+    from backend.cli import Cli
+
+    clock = Clock()
+    home = default_home()
+    policy = load_permission_policy(DEFAULT_PERMISSIONS_FILE)
+    policy.tools["home_set_power"] = policy.tools["home_set_power"].model_copy(update={"confirm": True})
+    out = []
+    confirmer = TerminalConfirmer(read=Script(clock, *replies), write=out.append, clock=clock)
+    llm, orch = _orchestrator(tmp_path, home, responses, policy, confirmer)
+    orch.gate._clock = clock
+    cli = Cli(orch, home, write=out.append, confirmer=confirmer)
+    cli.trace = False
+    return cli, home, llm, out
+
+
+def test_cli_runs_the_request_typed_during_a_question_after_it(tmp_path):
+    cli, home, llm, out = _cli_with_terminal(
+        tmp_path,
+        [
+            _calls(("home_set_power", {"device_id": LAMP, "on": True})),
+            _text("Lampu sudah nyala."),
+            _calls(("home_set_power", {"device_id": AC, "on": True})),
+            _text("AC sudah nyala."),
+        ],
+        [(2, "eh tolong nyalakan ac!"), (2, "y"), (2, "y")],
+    )
+
+    assert cli.handle("tolong nyalakan lampu") is True
+
+    assert home.device(LAMP).state["on"] is True
+    assert home.device(AC).state["on"] is True
+    assert "[antrean] memproses: eh tolong nyalakan ac!" in out
+    assert out.index("F.R.I.D.A.Y: Lampu sudah nyala.") < out.index(
+        "[antrean] memproses: eh tolong nyalakan ac!"
+    ) < out.index("F.R.I.D.A.Y: AC sudah nyala.")
+    assert llm.calls[2]["messages"][-1]["content"] == "eh tolong nyalakan ac!"
+    assert cli.confirmer.take_deferred() == []
+
+
+def test_cli_deferred_quit_still_quits(tmp_path):
+    cli, home, _, _ = _cli_with_terminal(
+        tmp_path,
+        [_calls(("home_set_power", {"device_id": LAMP, "on": True})), _text("ok")],
+        [(1, "/quit"), (1, "n")],
+    )
+
+    assert cli.handle("nyalakan lampu") is False
+    assert home.device(LAMP).state["on"] is False

@@ -45,6 +45,7 @@ from backend.devices import (
     default_home,
     two_lamp_home,
 )
+from backend.devices.tools import make_action_describer
 from backend.journal import ActionJournal, JournalEntry
 from backend.memory.session import Session
 from backend.memory.store import SessionStore
@@ -71,6 +72,7 @@ HELP = """Commands:
                                  <reads> later state reads (0 = normal again)
   /journal                       last 10 device commands from the action journal
   /journal ack                   mark the uncertain ("unknown") ones as checked
+  (while a y/n question waits, anything else you type is kept and run after it)
   /trace on|off                  show the tool calls of each turn (default on)
   /new                           start a new session
   /session                       show the current session id
@@ -96,9 +98,11 @@ def build_orchestrator(
     registry = ToolRegistry()
     registry.register(TIME_TOOL_CONTRACT, get_current_time)
     catalog = ToolCatalog()
-    MockHomeAdapter(
-        home, journal=journal, pending_timeout_seconds=pending_timeout_seconds
-    ).sync_into(catalog, pinned=pin_home_tools)
+    adapter = MockHomeAdapter(home, journal=journal, pending_timeout_seconds=pending_timeout_seconds)
+    adapter.sync_into(catalog, pinned=pin_home_tools)
+    gate = orchestrator_kwargs.get("gate")
+    if gate is not None and gate.describer is None:
+        gate.describer = make_action_describer(adapter.service)
     return Orchestrator(llm, registry=registry, catalog=catalog, **orchestrator_kwargs)
 
 
@@ -165,12 +169,15 @@ class Cli:
         session_id: str = DEFAULT_SESSION_ID,
         write: Callable[[str], None] = print,
         journal: ActionJournal | None = None,
+        confirmer: TerminalConfirmer | None = None,
     ) -> None:
         self.orch = orchestrator
         self.home = home
         self.session_id = session_id
         self.write = write
         self.journal = journal
+        # Holds what the owner typed while a y/n question was waiting.
+        self.confirmer = confirmer
         self.trace = True
 
     def startup_report(self) -> None:
@@ -195,6 +202,27 @@ class Cli:
         if line.startswith("/"):
             return self._command(line)
         self._turn(line)
+        return self._run_deferred()
+
+    def _run_deferred(self) -> bool:
+        """Run, oldest first, what the owner typed while a confirmation was waiting.
+
+        Only text the owner typed goes in, each line is taken out once, and
+        the model cannot add to it, so this always ends. Returns False if one
+        of them was /quit.
+        """
+        if self.confirmer is None:
+            return True
+        queue = self.confirmer.take_deferred()
+        while queue:
+            text = queue.pop(0)
+            self.write(f"[antrean] memproses: {text}")
+            if text.startswith("/"):
+                if not self._command(text):
+                    return False
+            else:
+                self._turn(text)
+            queue.extend(self.confirmer.take_deferred())
         return True
 
     def _turn(self, text: str) -> None:
@@ -314,6 +342,7 @@ def main(argv: list[str] | None = None) -> None:
     except PermissionConfigError as exc:
         raise SystemExit(f"F.R.I.D.A.Y cannot start without valid permission settings: {exc}")
     journal = ActionJournal(get_action_journal_file())
+    confirmer = TerminalConfirmer()
     home = HOMES[args.home]()
     orchestrator = build_orchestrator(
         get_llm_client(),
@@ -321,9 +350,9 @@ def main(argv: list[str] | None = None) -> None:
         pin_home_tools=args.pin_home,
         journal=journal,
         pending_timeout_seconds=get_device_pending_timeout_seconds(),
-        gate=PermissionGate(policy, TerminalConfirmer()),
+        gate=PermissionGate(policy, confirmer),
     )
-    cli = Cli(orchestrator, home, args.session, journal=journal)
+    cli = Cli(orchestrator, home, args.session, journal=journal, confirmer=confirmer)
 
     print(f"F.R.I.D.A.Y CLI - session '{cli.session_id}'. Mock home, real LLM (uses API credits).")
     print("/help for commands, /quit to exit.")

@@ -10,9 +10,9 @@
 |---|---|
 | Sprint aktif | **Sprint 4** (M11 Security mini + M16 Evaluasi mini). Sprint 3 selesai (M4 + M5 simulasi). |
 | Rencana berjalan | Rencana 5 tahap pasca-feedback 4 model AI: Tahap 1 ✅, Tahap 2 ✅, Tahap 3 ✅, Tahap 4 (mini-M11 + jurnal aksi) ✅, Tahap 5 (mini-M16 + observability) ⬜ |
-| Test | 402 passed, 4 skipped (Windows); 4 test khusus Linux (izin file) ikut jalan di CI |
+| Test | 412 passed, 4 skipped (Windows); 4 test khusus Linux (izin file) ikut jalan di CI |
 | CI | GitHub Actions, Linux + Windows, LLM palsu — hijau pada push terakhir (`a659d50`) |
-| Commit terakhir yang di-push | Tahap 4 (lihat `git log -1`) |
+| Commit terakhir yang di-push | Revisi Tahap 4: antrean konfirmasi (lihat `git log -1`) |
 | Model LLM | `claude-haiku-4-5` (development) |
 
 ## Yang sudah bisa dilakukan F.R.I.D.A.Y
@@ -27,6 +27,7 @@
 - **Minta izin:** hanya menjalankan tool yang terdaftar di `config/permissions.json`. Aksi penting (atau aksi biasa yang diberi `confirm`) ditanyakan y/n di terminal, langsung ke pemilik, bukan lewat AI.
 - **Mencatat setiap perintah perangkat** di jurnal aksi, sebelum dan sesudah dikirim. Saat CLI dibuka, perintah yang hasilnya belum jelas dilaporkan (`/journal`, `/journal ack`), tidak diulang otomatis.
 - Perintah "masih diproses" yang tidak terkonfirmasi dalam 1 menit menjadi "tidak jelas".
+- Pertanyaan izin memakai bahasa manusia ("💡 Lampu ruang tamu: nyalakan"). Kalau kamu mengetik perintah lain saat ditanya, perintah itu disimpan dan dikerjakan setelahnya; pertanyaan diulang sekali dengan 3 menit baru; kalau hangus, kamu diberi tahu sekali.
 - Menolak dua perintah ke perangkat yang sama dalam satu langkah. Isi arsip dan hasil tool diperlakukan sebagai data, bukan perintah.
 
 ## Celah yang diketahui (belum ditutup)

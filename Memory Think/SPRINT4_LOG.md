@@ -81,3 +81,99 @@
 - **File yang dibuat/diubah:** `backend/journal/store.py`, `backend/tests/test_stage4_journal.py`, `STATUS.md`, `Memory Think/M11_security.md`, `Memory Think/SPRINT4_LOG.md`.
 - **Belum dikerjakan / TODO lanjutan:** Tahap 5 (tulis daftar rencana dulu): termasuk aturan data luar dan uji ulang semua skenario.
 
+
+## [2026-10-26] Diskusi: kenapa konfirmasi F.R.I.D.A.Y hangus 3 menit, sedangkan asisten chat tidak
+
+- **Apa yang dikerjakan:** User bertanya kenapa asisten chat (Claude, ChatGPT, Gemini, Copilot) tidak punya batas waktu konfirmasi, padahal pertanyaan asisten "mau lanjut ke Tahap 5?" sudah lewat beberapa menit. Penjelasan asisten:
+  - Pertanyaan "mau lanjut?" adalah pertanyaan percakapan, bukan izin eksekusi. Tidak ada aksi yang menunggu untuk dijalankan otomatis; saat user menjawab, asisten membaca ulang konteks dan masih ada checkpoint lagi (daftar rencana).
+  - Konfirmasi F.R.I.D.A.Y adalah izin untuk satu aksi fisik yang langsung dieksekusi begitu jawaban "ya" masuk. Keadaan dunia nyata bisa berubah (orang lain sudah mematikan AC, user sudah pergi), orang lain bisa menjawab terminal yang ditinggal, dan nanti di mode suara "ya" dari obrolan/TV bisa tertangkap sebagai jawaban pertanyaan lama.
+  - Pola yang sama dipakai sistem yang mengeksekusi aksi nyata: kode OTP, persetujuan login dua langkah, dan sesi suara asisten rumah yang berakhir dalam hitungan detik. Bahkan izin tool di asisten coding bersifat memblokir dan hanya berlaku untuk satu aksi yang sedang ditampilkan.
+  - Angka 180 detik bisa diubah di `config/permissions.json` (`confirmation_ttl_seconds`).
+- **File yang dibuat/diubah:** `Memory Think/SPRINT4_LOG.md` — entry ini.
+- **Belum dikerjakan / TODO lanjutan:** menunggu user untuk Tahap 5.
+
+## [2026-10-26] Kasus user: perintah baru (AC) masuk saat konfirmasi lama (TV) belum dijawab
+
+- **Apa yang dikerjakan:** User bertanya: "nyalakan TV" (menunggu konfirmasi), lalu "nyalakan AC" sebelum menjawab. User mengusulkan antrean: konfirmasi TV dimunculkan dulu, baru AC.
+  - Perilaku saat ini (dicek di kode): `TerminalConfirmer` memblokir dan membaca baris berikutnya sebagai jawaban. "eh tolong nyalakan ac!" bukan y/n, jadi dianggap `unclear`: TV tidak jalan (aman), tetapi **perintah AC ikut hilang** (tidak diproses sebagai pesan baru). Ini celah UX yang ditemukan dari pertanyaan user.
+  - Usulan asisten (menggabungkan ide user): jawaban yang bukan y/n tidak langsung dianggap "tidak". Pertanyaan TV diulang sekali ("TV belum dijawab, y/n?"), sementara teks AC disimpan ke antrean dan diproses setelah TV selesai, termasuk konfirmasinya sendiri kalau perlu. Jika saat diulang pertanyaan TV sudah lewat 3 menit, TV dibatalkan dan user diberi tahu. Satu pertanyaan per waktu, urut sesuai urutan perintah. Untuk mode suara (Sprint 5) prinsip yang sama berlaku, ditambah pertanyaan menyebut nama perangkatnya ("TV: ya atau tidak?") supaya "ya" tidak tertukar.
+- **File yang dibuat/diubah:** `Memory Think/SPRINT4_LOG.md` — entry ini.
+- **Belum dikerjakan / TODO lanjutan:** menunggu keputusan user: dikerjakan sekarang (tambahan kecil Tahap 4) atau masuk daftar Tahap 5.
+
+## [2026-10-26] Saran user: batas waktu 5–10 menit? pengingat saat konfirmasi hangus
+
+- **Apa yang dikerjakan:** User menimbang menaikkan batas konfirmasi ke 5/10 menit karena antrean, dan mengusulkan pengingat saat waktu habis (user sendiri baru "setengah yakin"). Pendapat asisten:
+  - **Batas waktu:** tetap 180 detik, tetapi dihitung per pertanyaan yang ditampilkan. Saat pertanyaan TV diulang karena ada perintah baru, pertanyaan itu dianggap pertanyaan baru dengan jendela 3 menit baru. Antrean tidak menghabiskan waktu, jadi angkanya tidak perlu dinaikkan. 10 menit dinilai terlalu lama untuk aksi fisik. Angka tetap bisa diubah user di `permissions.json`.
+  - **Pengingat:** diterima sebagian. Saat pertanyaan hangus, F.R.I.D.A.Y memberi tahu **sekali** ("TV tidak dinyalakan karena pertanyaannya sudah hangus") dan menyediakan `/ulang` untuk mengirim ulang perintah yang batal sebagai pertanyaan baru. Ditolak: pengingat berulang/otomatis, karena di terminal yang sedang menunggu ketikan tidak bisa muncul pesan sendiri tanpa merombak CLI, dan pengingat yang terus muncul mengganggu serta mendorong asal jawab "y". Dipertimbangkan lagi untuk mode suara (Sprint 5).
+  - Daftar kerja tambahan Tahap 4 (6 nomor) diajukan, menunggu persetujuan.
+- **File yang dibuat/diubah:** `Memory Think/SPRINT4_LOG.md` — entry ini.
+- **Belum dikerjakan / TODO lanjutan:** menunggu user menyetujui daftar.
+
+## [2026-10-26] Revisi Tahap 4: nomor 1, 2, 3 dikerjakan; 5 dibatalkan user; 4 menunggu penjelasan
+
+- **Apa yang dikerjakan:** Jawaban user: 1 ya, 2 "gas", 3 boleh, 4 minta penjelasan bahasa awam, 5 **tidak usah** (`/ulang` dikhawatirkan memicu AI mengulang tanpa sengaja), 6 boleh (token Anthropic boleh dipakai bila perlu).
+  1. Pertanyaan konfirmasi pakai bahasa manusia: `make_action_describer` (`backend/devices/tools.py`) → "💡 Lampu ruang tamu: nyalakan", "❄️ AC kamar: atur suhu target ke 22°C"; `PermissionGate(describer=)`, dipasang otomatis oleh `build_orchestrator` bila ada gerbang. Describer error → kembali ke format tool(args).
+  2. `TerminalConfirmer`: jawaban bukan y/n disimpan di `deferred` (perintah tidak hilang), pertanyaan diulang **sekali** dengan jendela 3 menit baru (`ConfirmationAnswer.shown_at`; gerbang menghitung batas dari `shown_at`). Pertanyaan yang sudah hangus tidak diulang. Kedua kalinya bukan y/n → batal.
+  3. Pemberitahuan sekali lewat `notify`: "… TIDAK dijalankan: pertanyaannya sudah lewat 3 menit. Ketik ulang perintahnya kalau masih mau." dan "… dibatalkan: jawabannya bukan y/n." Tidak ada pemberitahuan untuk y/n biasa.
+  - 8 test baru → **410 passed, 4 skipped**.
+- **File yang dibuat/diubah:** `backend/security/gate.py`, `backend/devices/tools.py`, `backend/cli.py`, `backend/tests/test_stage4_permissions.py`, entry ini.
+- **Belum dikerjakan / TODO lanjutan:** nomor 4 (CLI memproses `deferred` berurutan setelah turn selesai) menunggu persetujuan setelah dijelaskan. Sampai itu dikerjakan, perintah yang disimpan belum diproses. Lalu catatan M11/STATUS dan uji AI asli.
+
+## [2026-10-26] Revisi Tahap 4 nomor 4 selesai: antrean titipan dikerjakan
+
+- **Apa yang dikerjakan:**
+  - User setuju nomor 4 dan meluruskan bahwa kekhawatiran looping tadi untuk nomor 5. Asisten membenarkan: nomor 4 dibahas hanya untuk menunjukkan bahwa nomor 4 tidak membawa risiko yang sama.
+  - `Cli(confirmer=)` + `_run_deferred()`: setelah tiap turn, isi `deferred` dikerjakan berurutan (`[antrean] memproses: …`). Perintah garis miring di titipan tetap jalan, termasuk `/quit`. `main()` memakai satu `TerminalConfirmer` untuk gerbang dan CLI. Teks bantuan CLI menyebut perilaku ini.
+  - 2 test CLI baru → **412 passed, 4 skipped**.
+  - Uji AI asli 2 skenario, 12 panggilan, ±$0,05:
+    - (1) Lampu ditanya, AC menyela, y, y → lampu lalu AC menyala sesuai urutan.
+    - (2) Jawaban baru datang setelah 240 detik → lampu tidak menyala, pemilik diberi tahu sekali, model bilang "sudah kedaluwarsa, silakan ulangi". AC dari titipan ditanya lalu menyala.
+    - Catatan kecil: di skenario 2 model sempat mengirim `"on": "true"` (string) dan memanggil tool yang belum dimuat, lalu memperbaiki sendiri lewat `find_tools`. Bukan bug baru.
+- **File yang dibuat/diubah:** `backend/cli.py`, `backend/tests/test_stage4_permissions.py`, `README.md`, `STATUS.md`, `Memory Think/M11_security.md`, entry ini.
+- **Belum dikerjakan / TODO lanjutan:** commit menunggu instruksi user, lalu Tahap 5 (daftar rencana dulu).
+
+
+## [2026-10-26] Pertanyaan user: kalau nanti memakai bahasa lain, apakah ada LLM khusus penyesuaian bahasa?
+
+- **Apa yang dikerjakan:** Dijawab asisten (belum ada perubahan kode). Peta 12 sprint (`sprint-paper-mapping.md`) tidak punya modul bahasa/terjemahan khusus, dan LLM penerjemah terpisah tidak disarankan: LLM utama (Claude, juga GPT/Gemini) sudah multibahasa, sedangkan penerjemah tambahan menambah waktu, biaya, dan salah terjemah. Bagian F.R.I.D.A.Y yang masih terikat bahasa Indonesia/Inggris:
+  - kata y/n di `TerminalConfirmer`;
+  - teks pertanyaan dan pemberitahuan ("nyalakan", "TIDAK dijalankan");
+  - contoh kalimat di tool;
+  - pencarian FTS5 tanpa lintas bahasa ("lamp" ≠ "lampu");
+  - nanti STT/wake word/TTS per bahasa (Sprint 5);
+  - kemampuan bahasa model lokal kecil (Sprint 8, bisa jadi alasan routing ke cloud);
+  - gaya bahasa (Sprint 10).
+  
+  Usulan: satu pengaturan "bahasa pemilik" yang dibaca bagian-bagian itu, dikerjakan bertahap di sprint terkait. Ditanyakan ke user bahasa apa saja yang direncanakan.
+- **File yang dibuat/diubah:** `Memory Think/SPRINT4_LOG.md` — entry ini.
+- **Belum dikerjakan / TODO lanjutan:** menunggu jawaban user (bahasa yang direncanakan); commit revisi Tahap 4 masih menunggu instruksi.
+
+## [2026-10-26] Diskusi: F.R.I.D.A.Y multibahasa otomatis seperti AI besar + ide "mode penerjemah"
+
+- **Apa yang dikerjakan:** User ingin F.R.I.D.A.Y menangani banyak bahasa secara otomatis seperti Claude/ChatGPT/Gemini, bukan lewat pengaturan "bahasa pemilik", termasuk untuk menerjemahkan antara user dan orang asing. Penjelasan asisten:
+  - AI besar multibahasa karena dilatih dengan teks dari banyak bahasa. Mengenali bahasa dan menerjemahkan adalah kemampuan bawaan modelnya, bukan modul terpisah. Otak F.R.I.D.A.Y adalah model seperti itu, jadi percakapan dan terjemahan teks **sudah bisa sekarang** lewat CLI.
+  - Usulan "pengaturan bahasa pemilik" **dicabut** untuk percakapan. Yang tersisa hanya bagian berbasis aturan (bukan AI):
+    - Kata y/n dan teks konfirmasi tetap dalam bahasa pemilik, karena yang menyetujui aksi hanya pemilik. Orang asing tidak boleh menyetujui aksi.
+    - Pencarian lintas bahasa diukur di Tahap 5.
+  - **Mode penerjemah suara** (ide user) belum ada di peta sprint. Diusulkan masuk Sprint 5:
+    - STT yang mengenali bahasa otomatis (mis. Whisper);
+    - TTS multibahasa;
+    - penanda giliran bicara;
+    - ucapan orang asing = data, bukan perintah (sejalan dengan aturan data luar di Tahap 5);
+    - hanya suara pemilik yang bisa menyetujui aksi (M9 speaker verification).
+  - Catatan jujur: kualitas berbeda per bahasa. Bahasa daerah dan bahasa yang jarang dipakai bisa lebih lemah, dan model lokal kecil (Sprint 8) biasanya lebih lemah lagi.
+- **File yang dibuat/diubah:** `Memory Think/SPRINT4_LOG.md` — entry ini.
+- **Belum dikerjakan / TODO lanjutan:** catat "mode penerjemah" sebagai calon fitur Sprint 5 bila user setuju; commit revisi Tahap 4 masih menunggu instruksi.
+
+## [2026-10-26] Visi user: F.R.I.D.A.Y mandiri, tidak terikat Claude/AI besar
+
+- **Apa yang dikerjakan:** User menegaskan F.R.I.D.A.Y harus mandiri tanpa keterikatan dengan asisten (Claude Code) maupun AI besar lain. Penjelasan asisten:
+  - Ini sejalan dengan keputusan 2026-08-07 (`SPRINT1_LOG.md`): cloud dulu untuk membangun logika, model open-weight lokal di Sprint 8 (M12/M13). `get_llm_client` sudah dibuat dapat diganti providernya.
+  - Dibedakan dua hal: (1) Claude Code = alat bantu membangun, bukan bagian F.R.I.D.A.Y saat berjalan; (2) Claude API = "otak" sementara F.R.I.D.A.Y, yang nanti diganti model lokal.
+  - Multibahasa tetap bisa secara lokal: model open-weight multibahasa (Qwen, Gemma, Llama, dll.), STT lokal (Whisper open-source), TTS lokal, dan model terjemahan lokal. Ada tukar-tambahnya: butuh GPU, dan kualitas model lokal kecil di bawah model cloud besar (terutama pemanggilan tool dan bahasa daerah).
+  - Melatih LLM sendiri dari nol tidak realistis (biaya dan data sangat besar). Yang realistis: model open-weight + fine-tuning nanti.
+  - Yang sudah dibangun tidak bergantung pada kebaikan model (gerbang izin, jurnal, konfirmasi di luar model), jadi tetap berlaku dan justru lebih penting untuk model lokal yang lebih lemah.
+  - Evaluasi Tahap 5 = alat ukur untuk memutuskan apakah model lokal sudah cukup baik (soal ujian yang sama untuk Claude dan model lokal).
+  - Ditanyakan: Sprint 8 sepenuhnya lokal, atau hibrida (lokal utama, cloud opsional)?
+- **File yang dibuat/diubah:** `Memory Think/SPRINT4_LOG.md` — entry ini; memori asisten `friday_independence_goal.md`.
+- **Belum dikerjakan / TODO lanjutan:** jawaban user soal lokal penuh vs hibrida; commit revisi Tahap 4 masih menunggu instruksi.

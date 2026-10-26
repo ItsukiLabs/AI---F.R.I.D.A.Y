@@ -35,7 +35,7 @@ cp .env.example .env    # lalu isi ANTHROPIC_API_KEY; opsional FRIDAY_TIMEZONE=A
 
 Perintah di dalam CLI: `/state`, `/fail <device> offline|lost_ack`, `/slow <device> <reads>`, `/journal`, `/journal ack`, `/trace on|off`, `/new`, `/session`, `/help`, `/quit`.
 
-**Izin (Sprint 4):** setiap tool harus terdaftar di `config/permissions.json` (`read_only` / `standard` / `critical`, plus `"confirm": true` untuk `standard` yang ingin ditanyakan dulu). Tool yang tidak terdaftar tidak pernah dijalankan. Aksi yang perlu konfirmasi ditanyakan langsung di terminal (y/n), bukan lewat AI. Setiap perintah perangkat dicatat di jurnal aksi (`backend/journal/data/actions.db`).
+**Izin (Sprint 4):** setiap tool harus terdaftar di `config/permissions.json` (`read_only` / `standard` / `critical`, plus `"confirm": true` untuk `standard` yang ingin ditanyakan dulu). Tool yang tidak terdaftar tidak pernah dijalankan. Aksi yang perlu konfirmasi ditanyakan langsung di terminal (y/n), bukan lewat AI. Kalimat lain yang diketik saat ditanya disimpan dan dikerjakan setelah pertanyaan selesai. Setiap perintah perangkat dicatat di jurnal aksi (`backend/journal/data/actions.db`).
 
 **Test** (LLM palsu, gratis, tanpa API key):
 

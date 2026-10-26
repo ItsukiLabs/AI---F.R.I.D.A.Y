@@ -87,6 +87,35 @@ def _settle(service: DeviceService, device_id: str, changes: dict[str, Any]) -> 
     return payload
 
 
+# Plain words for the owner's confirmation question (stage 4 revision).
+_KIND_ICONS = {"lamp": "💡", "air_conditioner": "❄️"}
+_CAPABILITY_WORDS = {"brightness": "kecerahan", "target_temperature": "suhu target"}
+
+
+def make_action_describer(service: DeviceService) -> Callable[[str, dict[str, Any]], str | None]:
+    """``(tool_name, arguments) -> "💡 Lampu ruang tamu: nyalakan"`` for device tools, else None."""
+
+    def describe(tool_name: str, arguments: dict[str, Any]) -> str | None:
+        device_id = arguments.get("device_id")
+        if not tool_name.startswith("home_set_") or not isinstance(device_id, str):
+            return None
+        try:
+            device = service.descriptor(device_id)
+        except DeviceError:
+            return None
+        icon = _KIND_ICONS.get(device.kind, "🔌")
+        if tool_name == "home_set_power":
+            action = "nyalakan" if arguments.get("on") else "matikan"
+        else:
+            key = tool_name.removeprefix("home_set_")
+            capability = device.capability(key)
+            unit = capability.unit if capability and capability.unit else ""
+            action = f"atur {_CAPABILITY_WORDS.get(key, key)} ke {arguments.get(key)}{unit}"
+        return f"{icon} {device.name}: {action}"
+
+    return describe
+
+
 def build_device_tools(
     service: DeviceService, domain: str
 ) -> list[tuple[ToolContract, Callable[..., Any]]]:
